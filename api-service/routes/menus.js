@@ -24,12 +24,22 @@ router.post('/', async (req, res) => {
 
 // Earnings (Pendapatan per stan)
 router.get('/earnings/:stallId', async (req, res) => {
+    const { stallId } = req.params; 
     try {
         const [rows] = await pool.query(
-            'SELECT SUM(total) as total_pendapatan FROM orders WHERE status = "paid"'
+            `SELECT SUM(oi.subtotal) as total_pendapatan 
+             FROM order_items oi
+             JOIN orders o ON oi.order_id = o.id
+             WHERE oi.stall_id = ? AND o.status = "paid"`,
+            [stallId]
         );
-        res.json({ stall_id: req.params.stallId, total_earnings: rows[0].total_pendapatan || 0 });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        res.json({ 
+            stall_id: stallId, 
+            total_earnings: rows[0].total_pendapatan || 0 
+        });
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
 });
 
 module.exports = router;
