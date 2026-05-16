@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
 
-// List semua menu
+// 1. List semua menu
 router.get('/', async (req, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM menus');
@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Tambah menu (Seller)
+// 2. Tambah menu baru (Seller)
 router.post('/', async (req, res) => {
     const { stall_id, nama, harga, foto_url, stok } = req.body;
     try {
@@ -22,7 +22,7 @@ router.post('/', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Earnings (Pendapatan per stan)
+// 3. Earnings (Pendapatan per stan)
 router.get('/earnings/:stallId', async (req, res) => {
     const { stallId } = req.params; 
     try {
@@ -34,12 +34,43 @@ router.get('/earnings/:stallId', async (req, res) => {
             [stallId]
         );
         res.json({ 
-            stall_id: stallId, 
+            stall_id: parseInt(stallId), 
             total_earnings: rows[0].total_pendapatan || 0 
         });
     } catch (err) { 
         res.status(500).json({ error: err.message }); 
     }
+});
+
+// 4. GET Detail 1 menu berdasarkan ID (Tambahan Target)
+router.get('/:id', async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT * FROM menus WHERE id = ?', [req.params.id]);
+        if (rows.length === 0) return res.status(404).json({ message: "Menu tidak ditemukan" });
+        res.json(rows[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 5. PUT Update data menu / Edit Menu (Tambahan Target)
+router.put('/:id', async (req, res) => {
+    const { nama, harga, foto_url, stok } = req.body;
+    try {
+        const [result] = await pool.query(
+            'UPDATE menus SET nama = ?, harga = ?, foto_url = ?, stok = ? WHERE id = ?',
+            [nama, harga, foto_url, stok, req.params.id]
+        );
+        if (result.affectedRows === 0) return res.status(404).json({ message: "Menu gagal diupdate atau tidak ditemukan" });
+        res.json({ message: "Menu berhasil diperbarui!" });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 6. DELETE Hapus menu (Tambahan Target)
+router.delete('/:id', async (req, res) => {
+    try {
+        const [result] = await pool.query('DELETE FROM menus WHERE id = ?', [req.params.id]);
+        if (result.affectedRows === 0) return res.status(404).json({ message: "Menu tidak ditemukan" });
+        res.json({ message: "Menu berhasil dihapus!" });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 module.exports = router;

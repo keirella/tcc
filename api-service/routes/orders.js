@@ -2,17 +2,18 @@ const express = require('express');
 const router = express.Router();
 const { pool, datastore } = require('../db'); 
 
+// 1. Buat Pesanan Baru / Checkout Keranjang 
 router.post('/', async (req, res) => {
     const { buyer_id, total, items } = req.body; 
     try {
-        // 1. Simpan data utama ke tabel orders dulu
+        // A. Simpan data utama ke tabel orders dulu
         const [result] = await pool.query(
             'INSERT INTO orders (buyer_id, total, status) VALUES (?, ?, ?)', 
             [buyer_id, total, 'pending']
         );
         const orderId = result.insertId;
 
-        // 2. Loop semua item makanan yang dibeli, masukkan ke order_items
+        // B. Loop semua item makanan yang dibeli, masukkan ke order_items
         for (const item of items) {
             await pool.query(
                 `INSERT INTO order_items (order_id, menu_id, stall_id, qty, subtotal) 
@@ -20,13 +21,13 @@ router.post('/', async (req, res) => {
                 [orderId, item.menu_id, item.stall_id, item.qty, item.subtotal]
             );
 
-            // 3. Simpan ke Firebase Realtime Datastore per Item Stan
+            // C. Simpan ke Firebase Realtime Datastore per Item Stan 
             const orderKey = datastore.key(['orders', `${orderId}_${item.stall_id}`]);
             await datastore.save({
                 key: orderKey,
                 data: {
                     order_id: orderId,
-                    stall_id: item.stall_id,
+                    stall_id: parseInt(item.stall_id),
                     status: 'pending',
                     created_at: new Date()
                 }
@@ -34,6 +35,57 @@ router.post('/', async (req, res) => {
         }
 
         res.status(201).json({ message: "Order keranjang berhasil masuk MySQL & Datastore!", orderId: orderId });
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
+});
+
+// 2. GET Ambil semua daftar pesanan global 
+router.get('/', async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT * FROM orders ORDER BY id DESC');
+        res.json(rows);
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
+});
+
+// 3. GET Ambil detail 1 orderan + daftar item makanannya (Tambahan Target)
+router.get('/:id', async (req, res) => {
+    try {
+        const [order] = await pool.query('SELECT * FROM orders WHERE id = ?', [req.params.id]);
+        if (order.length === 0) return res.status(404).json({ message: "Order tidak ditemukan" });
+        
+        const [items] = await pool.query('SELECT * FROM order_items WHERE order_id = ?', [req.params.id]);
+        res.json({ 
+            ...order[0], 
+            items: items 
+        });
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
+});
+
+// 4. PUT Update status pesanan / Kelola Status Seller (Tambahan Target)
+router.put('/:id', async (req, res) => {
+    const { status } = req.body; 
+    try {
+        const [result] = await pool.query('UPDATE orders SET status = ? WHERE id = ?', [status, req.params.id]);
+        if (result.affectedRows === 0) return res.status(404).json({ message: "Order tidak ditemukan" });
+        
+        res.json({ message: `Status order #${req.params.id} berhasil diubah menjadi: ${status}` });
+    } catch (err) { 
+        res.status(500).json({ error: err.message }); 
+    }
+});
+
+// 5. DELETE Batalkan / Hapus data transaksi orderan (Tambahan Target)
+router.delete('/:id', async (req, res) => {
+    try {
+        const [result] = await pool.query('DELETE FROM orders WHERE id = ?', [req.params.id]);
+        if (result.affectedRows === 0) return res.status(404).json({ message: "Order tidak ditemukan" });
+        
+        res.json({ message: `Data transaksi order #${req.params.id} berhasil dihapus dari sistem` });
     } catch (err) { 
         res.status(500).json({ error: err.message }); 
     }
