@@ -15,9 +15,129 @@ const styles = `
     font-family: 'Poppins', sans-serif;
     background-color: ${COLORS.beige};
     min-height: 100vh;
-    padding: 36px 40px;
     color: ${COLORS.darkGreen};
+    display: flex;
+  }
+
+  /* ===== SIDEBAR ===== */
+  .dash-sidebar {
+    width: 240px;
+    background: ${COLORS.darkGreen};
+    min-height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    z-index: 10;
+  }
+
+  .dash-logo {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid rgba(131,153,88,0.25);
+  }
+
+  .dash-logo h2 {
+    color: ${COLORS.beige};
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .dash-logo span {
+    color: ${COLORS.mossGreen};
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .dash-nav {
+    padding: 16px 12px;
+    flex: 1;
+  }
+
+  .dash-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    color: rgba(247,244,213,0.55);
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    margin-bottom: 4px;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+  }
+
+  .dash-nav-item:hover {
+    background: rgba(131,153,88,0.18);
+    color: ${COLORS.beige};
+  }
+
+  .dash-nav-item.active {
+    background: ${COLORS.mossGreen};
+    color: ${COLORS.darkGreen};
+    font-weight: 700;
+  }
+
+  .dash-nav-item .icon {
+    font-size: 17px;
+    width: 20px;
+    text-align: center;
+  }
+
+  .dash-seller-badge {
+    margin: 16px 12px;
+    background: rgba(16,86,102,0.5);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .dash-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: ${COLORS.mossGreen};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: ${COLORS.darkGreen};
+    font-weight: 800;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .dash-seller-info h4 {
+    color: ${COLORS.beige};
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 2px;
+  }
+
+  .dash-seller-info p {
+    color: ${COLORS.mossGreen};
+    font-size: 11px;
+    margin: 0;
+  }
+
+  /* ===== MAIN CONTENT ===== */
+  .orders-main {
     margin-left: 240px;
+    padding: 36px 40px;
+    min-height: 100vh;
+    flex: 1;
   }
 
   .orders-header {
@@ -85,8 +205,6 @@ const styles = `
     font-size: 20px;
     flex-shrink: 0;
   }
-
-  .strip-text {}
 
   .strip-value {
     font-size: 20px;
@@ -177,7 +295,6 @@ const styles = `
   }
 
   tbody tr:last-child { border-bottom: none; }
-
   tbody tr:hover { background: rgba(247,244,213,0.4); }
 
   td {
@@ -193,13 +310,10 @@ const styles = `
     font-size: 14px;
   }
 
-  .buyer-cell {}
   .buyer-name { font-weight: 600; font-size: 13px; }
   .buyer-sub { font-size: 11px; color: #aaa; margin-top: 2px; }
 
-  .items-cell {
-    max-width: 200px;
-  }
+  .items-cell { max-width: 200px; }
 
   .item-tag {
     display: inline-block;
@@ -238,25 +352,10 @@ const styles = `
     white-space: nowrap;
   }
 
-  .status-badge.paid {
-    background: rgba(131,153,88,0.15);
-    color: ${COLORS.mossGreen};
-  }
-
-  .status-badge.pending {
-    background: rgba(211,150,140,0.18);
-    color: ${COLORS.rosyBrown};
-  }
-
-  .status-badge.processing {
-    background: rgba(16,86,102,0.12);
-    color: ${COLORS.midnightGreen};
-  }
-
-  .status-badge.cancelled {
-    background: rgba(200,50,50,0.1);
-    color: #c0392b;
-  }
+  .status-badge.paid { background: rgba(131,153,88,0.15); color: ${COLORS.mossGreen}; }
+  .status-badge.pending { background: rgba(211,150,140,0.18); color: ${COLORS.rosyBrown}; }
+  .status-badge.processing { background: rgba(16,86,102,0.12); color: ${COLORS.midnightGreen}; }
+  .status-badge.cancelled { background: rgba(200,50,50,0.1); color: #c0392b; }
 
   .action-btn {
     padding: 7px 14px;
@@ -270,25 +369,11 @@ const styles = `
     white-space: nowrap;
   }
 
-  .action-btn.process {
-    background: rgba(16,86,102,0.12);
-    color: ${COLORS.midnightGreen};
-  }
-
+  .action-btn.process { background: rgba(16,86,102,0.12); color: ${COLORS.midnightGreen}; }
   .action-btn.process:hover { background: ${COLORS.midnightGreen}; color: white; }
-
-  .action-btn.done {
-    background: rgba(131,153,88,0.15);
-    color: ${COLORS.mossGreen};
-  }
-
+  .action-btn.done { background: rgba(131,153,88,0.15); color: ${COLORS.mossGreen}; }
   .action-btn.done:hover { background: ${COLORS.mossGreen}; color: ${COLORS.darkGreen}; }
-
-  .action-btn.view {
-    background: rgba(10,51,35,0.07);
-    color: ${COLORS.darkGreen};
-  }
-
+  .action-btn.view { background: rgba(10,51,35,0.07); color: ${COLORS.darkGreen}; }
   .action-btn.view:hover { background: rgba(10,51,35,0.15); }
 
   .empty-state {
@@ -309,16 +394,9 @@ const styles = `
     border-top: 1px solid #f5f2e8;
   }
 
-  .page-info {
-    font-size: 12px;
-    color: #aaa;
-    font-weight: 500;
-  }
+  .page-info { font-size: 12px; color: #aaa; font-weight: 500; }
 
-  .page-btns {
-    display: flex;
-    gap: 6px;
-  }
+  .page-btns { display: flex; gap: 6px; }
 
   .page-btn {
     width: 32px;
@@ -343,7 +421,7 @@ const styles = `
     border-color: ${COLORS.darkGreen};
   }
 
-  /* Detail drawer */
+  /* ===== DRAWER ===== */
   .drawer-overlay {
     position: fixed;
     inset: 0;
@@ -398,9 +476,7 @@ const styles = `
 
   .close-btn:hover { color: ${COLORS.darkGreen}; }
 
-  .drawer-section {
-    margin-bottom: 22px;
-  }
+  .drawer-section { margin-bottom: 22px; }
 
   .drawer-section-title {
     font-size: 11px;
@@ -471,20 +547,20 @@ const styles = `
     transition: all 0.2s;
   }
 
-  .drawer-action-btn.primary {
-    background: ${COLORS.mossGreen};
-    color: ${COLORS.darkGreen};
-  }
-
+  .drawer-action-btn.primary { background: ${COLORS.mossGreen}; color: ${COLORS.darkGreen}; }
   .drawer-action-btn.primary:hover { background: ${COLORS.darkGreen}; color: ${COLORS.beige}; }
-
-  .drawer-action-btn.secondary {
-    background: rgba(211,150,140,0.15);
-    color: ${COLORS.rosyBrown};
-  }
-
+  .drawer-action-btn.secondary { background: rgba(211,150,140,0.15); color: ${COLORS.rosyBrown}; }
   .drawer-action-btn.secondary:hover { background: ${COLORS.rosyBrown}; color: white; }
 `;
+
+const seller = { name: "Seller Padang", stall: "Stan Padang", code: "STAN001" };
+
+const navItems = [
+  { icon: "📊", label: "Dashboard", key: "dashboard" },
+  { icon: "🍽️", label: "Menu", key: "menu" },
+  { icon: "📋", label: "Pesanan", key: "orders" },
+  { icon: "⚙️", label: "Pengaturan", key: "settings" },
+];
 
 const ORDERS = [
   {
@@ -535,18 +611,25 @@ const STAT_CONFIGS = [
   { key: "processing", label: "Diproses", icon: "🔄", bg: "#10566620", color: COLORS.midnightGreen },
 ];
 
-export default function Orders() {
+export default function Orders({ onNavigate }) {
   const [orders, setOrders] = useState(ORDERS);
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
+  const [activeNav, setActiveNav] = useState("orders");
+
+  const handleNav = (key) => {
+    setActiveNav(key);
+    if (onNavigate) onNavigate(key);
+  };
 
   const stats = STAT_CONFIGS.map((s) => ({
     ...s,
     count: s.key === "all" ? orders.length : orders.filter((o) => o.status === s.key).length,
-    total: s.key === "all"
-      ? orders.reduce((a, o) => a + o.total, 0)
-      : orders.filter((o) => o.status === s.key).reduce((a, o) => a + o.total, 0),
+    total:
+      s.key === "all"
+        ? orders.reduce((a, o) => a + o.total, 0)
+        : orders.filter((o) => o.status === s.key).reduce((a, o) => a + o.total, 0),
   }));
 
   const filtered = orders.filter((o) => {
@@ -561,9 +644,7 @@ export default function Orders() {
   const advanceStatus = (id) => {
     setOrders((prev) =>
       prev.map((o) =>
-        o.id === id && STATUS_FLOW[o.status]
-          ? { ...o, status: STATUS_FLOW[o.status] }
-          : o
+        o.id === id && STATUS_FLOW[o.status] ? { ...o, status: STATUS_FLOW[o.status] } : o
       )
     );
     if (selected?.id === id) {
@@ -575,121 +656,153 @@ export default function Orders() {
     <div className="orders-root">
       <style>{styles}</style>
 
-      <div className="orders-header">
-        <div>
-          <h1>Pesanan Masuk 📋</h1>
-          <p>Stan Padang · {orders.length} total pesanan</p>
+      {/* Sidebar */}
+      <aside className="dash-sidebar">
+        <div className="dash-logo">
+          <h2>Kantin Digital</h2>
+          <span>Seller Portal</span>
         </div>
-        <button className="export-btn">📤 Export</button>
-      </div>
 
-      {/* Stats */}
-      <div className="stat-strip">
-        {stats.map((s) => (
-          <div key={s.key} className="strip-card">
-            <div className="strip-icon" style={{ background: s.bg }}>
-              {s.icon}
-            </div>
-            <div className="strip-text">
-              <div className="strip-value" style={{ color: s.color }}>{s.count}</div>
-              <div className="strip-label">{s.label}</div>
-            </div>
+        <nav className="dash-nav">
+          {navItems.map((item) => (
+            <button
+              key={item.key}
+              className={`dash-nav-item${activeNav === item.key ? " active" : ""}`}
+              onClick={() => handleNav(item.key)}
+            >
+              <span className="icon">{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="dash-seller-badge">
+          <div className="dash-avatar">{seller.name[0]}</div>
+          <div className="dash-seller-info">
+            <h4>{seller.name}</h4>
+            <p>{seller.code}</p>
           </div>
-        ))}
-      </div>
+        </div>
+      </aside>
 
-      {/* Filters */}
-      <div className="filter-toolbar">
-        <input
-          className="search-input"
-          placeholder="🔍 Cari pembeli atau ID..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        {["all", "pending", "processing", "paid"].map((t) => (
-          <button
-            key={t}
-            className={`tab-btn${tab === t ? ` active ${t}` : ""}`}
-            onClick={() => setTab(t)}
-          >
-            {t === "all" ? "Semua" : t === "pending" ? "⏳ Pending" : t === "processing" ? "🔄 Diproses" : "✅ Selesai"}
-          </button>
-        ))}
-      </div>
+      {/* Main Content */}
+      <main className="orders-main">
+        <div className="orders-header">
+          <div>
+            <h1>Pesanan Masuk 📋</h1>
+            <p>Stan Padang · {orders.length} total pesanan</p>
+          </div>
+          <button className="export-btn">📤 Export</button>
+        </div>
 
-      {/* Table */}
-      <div className="orders-table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID Pesanan</th>
-              <th>Pembeli</th>
-              <th>Menu</th>
-              <th>Total</th>
-              <th>Tanggal</th>
-              <th>Status</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
+        {/* Stats */}
+        <div className="stat-strip">
+          {stats.map((s) => (
+            <div key={s.key} className="strip-card">
+              <div className="strip-icon" style={{ background: s.bg }}>
+                {s.icon}
+              </div>
+              <div className="strip-text">
+                <div className="strip-value" style={{ color: s.color }}>{s.count}</div>
+                <div className="strip-label">{s.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div className="filter-toolbar">
+          <input
+            className="search-input"
+            placeholder="🔍 Cari pembeli atau ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {["all", "pending", "processing", "paid"].map((t) => (
+            <button
+              key={t}
+              className={`tab-btn${tab === t ? ` active ${t}` : ""}`}
+              onClick={() => setTab(t)}
+            >
+              {t === "all" ? "Semua" : t === "pending" ? "⏳ Pending" : t === "processing" ? "🔄 Diproses" : "✅ Selesai"}
+            </button>
+          ))}
+        </div>
+
+        {/* Table */}
+        <div className="orders-table-wrap">
+          <table>
+            <thead>
               <tr>
-                <td colSpan={7}>
-                  <div className="empty-state">
-                    <div className="emoji">📭</div>
-                    <h3>Tidak ada pesanan</h3>
-                    <p>Belum ada pesanan masuk untuk filter ini</p>
-                  </div>
-                </td>
+                <th>ID Pesanan</th>
+                <th>Pembeli</th>
+                <th>Menu</th>
+                <th>Total</th>
+                <th>Tanggal</th>
+                <th>Status</th>
+                <th>Aksi</th>
               </tr>
-            ) : (
-              filtered.map((o) => (
-                <tr key={o.id}>
-                  <td className="order-id-cell">#{String(o.id).padStart(3, "0")}</td>
-                  <td>
-                    <div className="buyer-name">{o.buyer}</div>
-                    <div className="buyer-sub">{o.buyerEmail}</div>
-                  </td>
-                  <td className="items-cell">
-                    {o.items.map((item, i) => (
-                      <span key={i} className="item-tag">{item.name} ×{item.qty}</span>
-                    ))}
-                  </td>
-                  <td className="amount-cell">{formatRupiah(o.total)}</td>
-                  <td className="date-cell">{o.created_at}</td>
-                  <td>
-                    <span className={`status-badge ${o.status}`}>
-                      {o.status === "paid" ? "✅ Selesai" : o.status === "pending" ? "⏳ Pending" : "🔄 Diproses"}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <button className="action-btn view" onClick={() => setSelected(o)}>Detail</button>
-                      {STATUS_FLOW[o.status] && (
-                        <button
-                          className={`action-btn ${o.status === "pending" ? "process" : "done"}`}
-                          onClick={() => advanceStatus(o.id)}
-                        >
-                          {o.status === "pending" ? "Proses" : "Selesai"}
-                        </button>
-                      )}
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7}>
+                    <div className="empty-state">
+                      <div className="emoji">📭</div>
+                      <h3>Tidak ada pesanan</h3>
+                      <p>Belum ada pesanan masuk untuk filter ini</p>
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                filtered.map((o) => (
+                  <tr key={o.id}>
+                    <td className="order-id-cell">#{String(o.id).padStart(3, "0")}</td>
+                    <td>
+                      <div className="buyer-name">{o.buyer}</div>
+                      <div className="buyer-sub">{o.buyerEmail}</div>
+                    </td>
+                    <td className="items-cell">
+                      {o.items.map((item, i) => (
+                        <span key={i} className="item-tag">{item.name} ×{item.qty}</span>
+                      ))}
+                    </td>
+                    <td className="amount-cell">{formatRupiah(o.total)}</td>
+                    <td className="date-cell">{o.created_at}</td>
+                    <td>
+                      <span className={`status-badge ${o.status}`}>
+                        {o.status === "paid" ? "✅ Selesai" : o.status === "pending" ? "⏳ Pending" : "🔄 Diproses"}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <button className="action-btn view" onClick={() => setSelected(o)}>Detail</button>
+                        {STATUS_FLOW[o.status] && (
+                          <button
+                            className={`action-btn ${o.status === "pending" ? "process" : "done"}`}
+                            onClick={() => advanceStatus(o.id)}
+                          >
+                            {o.status === "pending" ? "Proses" : "Selesai"}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
 
-        <div className="pagination">
-          <span className="page-info">Menampilkan {filtered.length} dari {orders.length} pesanan</span>
-          <div className="page-btns">
-            <button className="page-btn">‹</button>
-            <button className="page-btn active">1</button>
-            <button className="page-btn">›</button>
+          <div className="pagination">
+            <span className="page-info">Menampilkan {filtered.length} dari {orders.length} pesanan</span>
+            <div className="page-btns">
+              <button className="page-btn">‹</button>
+              <button className="page-btn active">1</button>
+              <button className="page-btn">›</button>
+            </div>
           </div>
         </div>
-      </div>
+      </main>
 
       {/* Detail Drawer */}
       {selected && (
