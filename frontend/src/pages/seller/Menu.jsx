@@ -8,96 +8,200 @@ const COLORS = {
   midnightGreen: "#105666",
 };
 
+// ─── Shared sidebar styles ────────────────────────────────────────────────────
 const sidebarStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
   .seller-sidebar {
-    width: 240px; background: #0A3323; min-height: 100vh;
-    position: fixed; left: 0; top: 0;
-    display: flex; flex-direction: column; z-index: 10;
+    width: 240px;
+    background: ${COLORS.darkGreen};
+    min-height: 100vh;
+    position: fixed;
+    left: 0; top: 0;
+    display: flex; flex-direction: column;
+    z-index: 10;
     font-family: 'Poppins', sans-serif;
+    overflow-y: auto;
   }
-  .sidebar-logo { padding: 28px 24px 20px; border-bottom: 1px solid rgba(131,153,88,0.25); }
-  .sidebar-logo h2 { color: #F7F4D5; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin: 0; line-height: 1.2; }
-  .sidebar-logo span { color: #839958; font-size: 11px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; }
-  .sidebar-nav { padding: 16px 12px; flex: 1; }
-  .sidebar-nav-item {
+  .sb-logo {
+    padding: 24px 20px 18px;
+    border-bottom: 1px solid rgba(131,153,88,0.25);
     display: flex; align-items: center; gap: 12px;
-    padding: 12px 16px; border-radius: 10px; cursor: pointer;
-    color: rgba(247,244,213,0.55); font-size: 14px; font-weight: 500;
-    transition: all 0.2s; margin-bottom: 4px;
-    border: none; background: none; width: 100%; text-align: left;
-    font-family: 'Poppins', sans-serif;
   }
-  .sidebar-nav-item:hover { background: rgba(131,153,88,0.18); color: #F7F4D5; }
-  .sidebar-nav-item.active { background: #839958; color: #0A3323; font-weight: 700; }
-  .sidebar-nav-item .nav-icon { font-size: 17px; width: 20px; text-align: center; flex-shrink: 0; }
-  .sidebar-badge {
-    margin: 16px 12px; background: rgba(16,86,102,0.5);
-    border-radius: 10px; padding: 14px 16px;
+  .sb-logo-icon {
+    width: 40px; height: 40px;
+    background: rgba(131,153,88,0.2); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .sb-logo h2 { color: ${COLORS.beige}; font-size: 16px; font-weight: 800; letter-spacing: -0.4px; margin: 0; line-height: 1.2; }
+  .sb-logo span { color: ${COLORS.mossGreen}; font-size: 10px; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase; }
+  .sb-nav { padding: 14px 10px; }
+  .sb-nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 14px; border-radius: 10px; cursor: pointer;
+    color: rgba(247,244,213,0.55); font-size: 14px; font-weight: 500;
+    transition: all 0.2s; margin-bottom: 3px;
+    border: none; background: none; width: 100%;
+    text-align: left; font-family: 'Poppins', sans-serif;
+  }
+  .sb-nav-item:hover { background: rgba(131,153,88,0.18); color: ${COLORS.beige}; }
+  .sb-nav-item.active { background: ${COLORS.mossGreen}; color: ${COLORS.darkGreen}; font-weight: 700; }
+  .sb-nav-item .nav-icon { font-size: 17px; width: 20px; text-align: center; flex-shrink: 0; }
+  .sb-nav-item .nav-badge {
+    margin-left: auto;
+    background: ${COLORS.rosyBrown}; color: white;
+    font-size: 11px; font-weight: 700;
+    min-width: 20px; height: 20px; border-radius: 99px;
+    display: flex; align-items: center; justify-content: center; padding: 0 5px;
+  }
+  .sb-nav-item.active .nav-badge { background: ${COLORS.darkGreen}; color: ${COLORS.beige}; }
+  .sb-section {
+    margin: 0 10px 4px;
+    background: rgba(16,86,102,0.35);
+    border-radius: 10px; padding: 12px 14px;
+  }
+  .sb-section-title {
+    font-size: 10px; font-weight: 700; color: ${COLORS.mossGreen};
+    letter-spacing: 1.2px; text-transform: uppercase;
+    margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+  }
+  .sb-section-title .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: ${COLORS.rosyBrown};
+    animation: blink 1.5s ease-in-out infinite;
+  }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .sb-order-item { margin-bottom: 8px; }
+  .sb-order-item:last-child { margin-bottom: 0; }
+  .sb-order-name { color: ${COLORS.beige}; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .sb-order-status {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 99px;
+  }
+  .sb-order-status.paid    { background: rgba(131,153,88,0.2);  color: ${COLORS.mossGreen}; }
+  .sb-order-status.cooking { background: rgba(211,150,140,0.2); color: ${COLORS.rosyBrown}; }
+  .sb-order-status.ready   { background: rgba(16,86,102,0.3);   color: #7ec8d8; }
+  .sb-empty-section { color: rgba(247,244,213,0.35); font-size: 11px; text-align: center; padding: 4px 0; }
+  .sb-notif-title {
+    font-size: 10px; font-weight: 700; color: ${COLORS.rosyBrown};
+    letter-spacing: 1.2px; text-transform: uppercase;
+    margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+  }
+  .sb-notif-item {
+    padding: 8px 0; border-bottom: 1px solid rgba(131,153,88,0.12);
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+  .sb-notif-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .sb-notif-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+  .sb-notif-dot.new  { background: ${COLORS.rosyBrown}; }
+  .sb-notif-dot.read { background: rgba(247,244,213,0.2); }
+  .sb-notif-text { color: rgba(247,244,213,0.7); font-size: 11px; line-height: 1.4; flex: 1; }
+  .sb-notif-time { color: rgba(247,244,213,0.3); font-size: 10px; margin-top: 2px; }
+  .sb-user-card {
+    margin: 8px 10px;
+    background: rgba(131,153,88,0.12); border: 1px solid rgba(131,153,88,0.2);
+    border-radius: 10px; padding: 12px 14px;
     display: flex; align-items: center; gap: 10px;
   }
-  .sidebar-avatar {
-    width: 38px; height: 38px; border-radius: 50%; background: #839958;
+  .sb-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: ${COLORS.mossGreen};
     display: flex; align-items: center; justify-content: center;
-    color: #0A3323; font-weight: 800; font-size: 15px; flex-shrink: 0;
+    color: ${COLORS.darkGreen}; font-weight: 800; font-size: 14px; flex-shrink: 0;
   }
-  .sidebar-badge h4 { color: #F7F4D5; font-size: 13px; font-weight: 600; margin: 0 0 2px; }
-  .sidebar-badge p  { color: #839958; font-size: 11px; margin: 0; }
-  .sidebar-logout {
-    margin: 0 12px 16px; display: flex; align-items: center; gap: 10px;
-    padding: 11px 16px; border-radius: 10px; cursor: pointer;
+  .sb-user-name { color: ${COLORS.beige}; font-size: 12px; font-weight: 600; margin: 0 0 1px; }
+  .sb-user-code { color: ${COLORS.mossGreen}; font-size: 10px; font-weight: 500; margin: 0; }
+  .sb-logout {
+    margin: 4px 10px 16px; display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 10px; cursor: pointer;
     color: rgba(247,244,213,0.4); font-size: 13px; font-weight: 500;
     border: 1px solid rgba(247,244,213,0.1); background: none;
-    width: calc(100% - 24px); font-family: 'Poppins', sans-serif; transition: all 0.2s;
+    width: calc(100% - 20px); font-family: 'Poppins', sans-serif; transition: all 0.2s;
   }
-  .sidebar-logout:hover { background: rgba(211,150,140,0.15); color: #D3968C; border-color: rgba(211,150,140,0.3); }
+  .sb-logout:hover { background: rgba(211,150,140,0.15); color: ${COLORS.rosyBrown}; border-color: rgba(211,150,140,0.3); }
 `;
 
 const navItems = [
   { icon: "📊", label: "Dashboard", key: "dashboard" },
   { icon: "🍽️", label: "Menu",      key: "menu" },
   { icon: "📋", label: "Pesanan",   key: "orders" },
-  { icon: "⚙️", label: "Pengaturan", key: "settings" },
 ];
 const seller = { name: "Seller Padang", stall: "Stan Padang", code: "STAN001" };
+const liveOrders = [
+  { id: 10, items: "Nasi Rendang ×2", status: "paid" },
+  { id: 9,  items: "Gulai Tunjang ×1", status: "cooking" },
+];
+const notifications = [
+  { text: "Pesanan #10 masuk, perlu dikonfirmasi", time: "06:51", isNew: true },
+  { text: "Pesanan #8 sudah selesai diproses", time: "06:30", isNew: false },
+];
+const statusLabel = { paid: "Menunggu Konfirmasi", cooking: "Sedang Dimasak", ready: "Siap Diambil" };
 
-function Sidebar({ active, onNavigate }) {
+function SellerSidebar({ active, onNavigate, pendingCount = 0 }) {
   return (
     <aside className="seller-sidebar">
-      <div className="sidebar-logo">
-        <h2>Kantin Digital</h2>
-        <span>Seller Portal</span>
+      <div className="sb-logo">
+        <div className="sb-logo-icon">🍽️</div>
+        <div>
+          <h2>Kantin Digital</h2>
+          <span>Seller Portal</span>
+        </div>
       </div>
-      <nav className="sidebar-nav">
+      <nav className="sb-nav">
         {navItems.map((item) => (
           <button
             key={item.key}
-            className={`sidebar-nav-item${item.key === active ? " active" : ""}`}
+            className={`sb-nav-item${item.key === active ? " active" : ""}`}
             onClick={() => onNavigate(item.key)}
           >
             <span className="nav-icon">{item.icon}</span>
             {item.label}
+            {item.key === "orders" && pendingCount > 0 && (
+              <span className="nav-badge">{pendingCount}</span>
+            )}
           </button>
         ))}
       </nav>
-      <div className="sidebar-badge">
-        <div className="sidebar-avatar">{seller.name[0]}</div>
+      <div className="sb-section">
+        <div className="sb-section-title"><span className="dot" />⚡ PESANAN AKTIF</div>
+        {liveOrders.length === 0 ? (
+          <p className="sb-empty-section">Belum ada pesanan aktif</p>
+        ) : liveOrders.map((o) => (
+          <div key={o.id} className="sb-order-item">
+            <div className="sb-order-name">#{o.id} · {o.items}</div>
+            <span className={`sb-order-status ${o.status}`}>
+              {o.status === "cooking" ? "🔥" : o.status === "ready" ? "✅" : "⏳"} {statusLabel[o.status]}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="sb-section">
+        <div className="sb-notif-title">🔔 NOTIFIKASI</div>
+        {notifications.map((n, i) => (
+          <div key={i} className="sb-notif-item">
+            <span className={`sb-notif-dot ${n.isNew ? "new" : "read"}`} />
+            <div>
+              <div className="sb-notif-text">{n.text}</div>
+              <div className="sb-notif-time">{n.time}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="sb-user-card">
+        <div className="sb-avatar">{seller.name[0]}</div>
         <div>
-          <h4>{seller.name}</h4>
-          <p>{seller.code}</p>
+          <p className="sb-user-name">{seller.name}</p>
+          <p className="sb-user-code">{seller.code}</p>
         </div>
       </div>
-      <button className="sidebar-logout" onClick={() => onNavigate("logout")}>
-        🚪 Keluar
-      </button>
+      <button className="sb-logout" onClick={() => onNavigate("logout")}>🚪 Keluar</button>
     </aside>
   );
 }
 
-
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-  ${sidebarStyles}
-
+// ─── Menu-specific styles (UNCHANGED from original) ───────────────────────────
+const menuStyles = `
   .menu-root {
     font-family: 'Poppins', sans-serif;
     background-color: ${COLORS.beige};
@@ -106,11 +210,9 @@ const styles = `
     display: flex;
   }
   .menu-main { margin-left: 240px; padding: 36px 40px; flex: 1; min-height: 100vh; }
-
   .menu-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; }
   .menu-header h1 { font-size: 26px; font-weight: 800; margin: 0 0 4px; }
   .menu-header p  { font-size: 13px; color: ${COLORS.mossGreen}; margin: 0; font-weight: 500; }
-
   .add-btn {
     background: ${COLORS.darkGreen}; color: ${COLORS.beige};
     border: none; padding: 12px 22px; border-radius: 12px;
@@ -118,7 +220,6 @@ const styles = `
     cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;
   }
   .add-btn:hover { background: ${COLORS.midnightGreen}; transform: translateY(-1px); }
-
   .menu-search-row { display: flex; gap: 12px; margin-bottom: 24px; align-items: center; }
   .search-input {
     flex: 1; padding: 12px 18px;
@@ -133,7 +234,6 @@ const styles = `
     cursor: pointer; background: white; color: #999; transition: all 0.2s;
   }
   .filter-btn.active { background: ${COLORS.mossGreen}; color: ${COLORS.darkGreen}; border-color: ${COLORS.mossGreen}; }
-
   .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
   .menu-card {
     background: white; border-radius: 18px; overflow: hidden;
@@ -151,7 +251,7 @@ const styles = `
     padding: 4px 10px; border-radius: 20px;
     font-size: 11px; font-weight: 700; font-family: 'Poppins', sans-serif;
   }
-  .stock-badge.ok  { background: rgba(131,153,88,0.2);  color: ${COLORS.mossGreen}; }
+  .stock-badge.ok  { background: rgba(131,153,88,0.2);   color: ${COLORS.mossGreen}; }
   .stock-badge.low { background: rgba(211,150,140,0.25); color: ${COLORS.rosyBrown}; }
   .stock-badge.out { background: rgba(220,50,50,0.1);    color: #c0392b; }
   .menu-card-body { padding: 18px 20px; }
@@ -174,7 +274,6 @@ const styles = `
   .stock-bar-bg { flex: 1; height: 6px; background: #f0ede0; border-radius: 10px; overflow: hidden; }
   .stock-bar-fill { height: 100%; border-radius: 10px; transition: width 0.6s ease; }
   .stock-count { font-size: 12px; font-weight: 700; white-space: nowrap; }
-
   .modal-overlay {
     position: fixed; inset: 0; background: rgba(10,51,35,0.45); z-index: 100;
     display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);
@@ -213,9 +312,10 @@ const styles = `
   .empty-state { text-align: center; padding: 60px 20px; color: #bbb; grid-column: 1/-1; }
   .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
   .empty-state h3 { font-size: 16px; font-weight: 600; margin: 0 0 8px; color: ${COLORS.darkGreen}; }
-  .empty-state p { font-size: 13px; margin: 0; }
+  .empty-state p  { font-size: 13px; margin: 0; }
 `;
 
+// ─── Menu data & logic (UNCHANGED) ───────────────────────────────────────────
 const EMOJIS = {
   "Nasi Rendang": "🍛", "Ayam Gulai": "🍲",
   "Ayam Geprek Level 1": "🌶️", "Ayam Geprek Level 5": "🔥",
@@ -226,7 +326,6 @@ const INITIAL_MENUS = [
   { id: 3, nama: "Ayam Geprek Level 1", harga: 12000, stok: 25, foto_url: "" },
   { id: 4, nama: "Ayam Geprek Level 5", harga: 15000, stok: 3,  foto_url: "" },
 ];
-
 function getStockStatus(stok) {
   if (stok === 0) return { label: "Habis",       cls: "out" };
   if (stok < 5)  return { label: "Hampir Habis", cls: "low" };
@@ -241,6 +340,12 @@ export default function Menu({ onNavigate }) {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing]     = useState(null);
   const [form, setForm]           = useState({ nama: "", harga: "", stok: "", foto_url: "" });
+  const [activeNav, setActiveNav] = useState("menu");
+
+  const handleNav = (key) => {
+    setActiveNav(key);
+    if (onNavigate) onNavigate(key);
+  };
 
   const filtered = menus.filter((m) => {
     const matchSearch = m.nama.toLowerCase().includes(search.toLowerCase());
@@ -267,9 +372,9 @@ export default function Menu({ onNavigate }) {
 
   return (
     <div className="menu-root">
-      <style>{styles}</style>
+      <style>{sidebarStyles + menuStyles}</style>
 
-      <Sidebar active="menu" onNavigate={onNavigate} />
+      <SellerSidebar active={activeNav} onNavigate={handleNav} pendingCount={2} />
 
       <main className="menu-main">
         <div className="menu-header">
@@ -326,7 +431,7 @@ export default function Menu({ onNavigate }) {
                     <div className="menu-card-footer">
                       <span className="menu-price">{formatRupiah(m.harga)}</span>
                       <div className="menu-actions">
-                        <button className="icon-btn edit"   onClick={() => openEdit(m)}       title="Edit">✏️</button>
+                        <button className="icon-btn edit"   onClick={() => openEdit(m)}        title="Edit">✏️</button>
                         <button className="icon-btn delete" onClick={() => handleDelete(m.id)} title="Hapus">🗑️</button>
                       </div>
                     </div>
