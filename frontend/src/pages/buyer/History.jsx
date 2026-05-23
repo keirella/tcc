@@ -1,10 +1,5 @@
 import { useState } from "react";
-import {
-  USER,
-  DUMMY_ORDERS,
-  STATUS_CONFIG,
-  STATUS_STEPS as STEPS,
-} from "../../data/DummyData";
+import { USER, DUMMY_ORDERS, STATUS_CONFIG } from "../../data/DummyData";
 
 const COLORS = {
   primary: "#ffffff",
@@ -18,11 +13,18 @@ const COLORS = {
 
 const fmt = (n) => "Rp " + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
+const FILTER_TABS = [
+  { key: "all", label: "Semua" },
+  { key: "cooking", label: "Dimasak 🍳" },
+  { key: "ready", label: "Siap Diambil ✅" },
+  { key: "cancelled", label: "Dibatalkan ❌" },
+];
+
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Poppins', sans-serif; background: ${COLORS.bg_light}; }
-  .os-app { display: flex; min-height: 100vh; }
+  .hs-app { display: flex; min-height: 100vh; }
 
   /* SIDEBAR */
   .sidebar { width: 240px; flex-shrink: 0; background: ${COLORS.primary}; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; transition: transform 0.3s; border-right: 1px solid rgba(211,150,140,0.15); }
@@ -51,68 +53,57 @@ const css = `
   .topbar-title { font-size: 18px; font-weight: 700; color: ${COLORS.text_dark}; }
 
   /* MAIN */
-  .os-main { margin-left: 240px; flex: 1; min-width: 0; }
-  .os-page { padding: 28px 32px 60px; }
+  .hs-main { margin-left: 240px; flex: 1; min-width: 0; }
+  .hs-page { padding: 28px 32px 60px; }
 
-  /* ACTIVE BANNER */
-  .active-banner { background: linear-gradient(135deg, ${COLORS.secondary} 0%, ${COLORS.accent} 100%); border-radius: 20px; padding: 20px 24px; display: flex; align-items: center; gap: 16px; margin-bottom: 28px; box-shadow: 0 4px 20px rgba(211,150,140,0.3); }
-  .active-banner-icon { font-size: 36px; flex-shrink: 0; }
-  .active-banner-title { font-size: 16px; font-weight: 700; color: white; margin-bottom: 3px; }
-  .active-banner-sub { font-size: 13px; color: rgba(255,255,255,0.8); }
-  .active-banner-right { margin-left: auto; flex-shrink: 0; }
-  .active-badge { background: rgba(255,255,255,0.25); color: white; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 99px; animation: pulse 2s infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }
+  /* STATS */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .stat-card { background: white; border-radius: 16px; padding: 16px 18px; box-shadow: 0 2px 10px rgba(211,150,140,0.08); }
+  .stat-label { font-size: 12px; color: rgba(16,86,102,0.55); font-weight: 500; margin-bottom: 6px; }
+  .stat-val { font-size: 22px; font-weight: 800; color: ${COLORS.text_dark}; }
+  .stat-sub { font-size: 11px; color: ${COLORS.secondary}; font-weight: 500; margin-top: 3px; }
+
+  /* FILTER TABS */
+  .filter-row { display: flex; gap: 8px; margin-bottom: 22px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-tab { flex-shrink: 0; padding: 8px 18px; border-radius: 99px; border: 2px solid transparent; background: white; font-size: 13px; font-weight: 600; color: ${COLORS.text_dark}; cursor: pointer; transition: all 0.2s; font-family: 'Poppins', sans-serif; box-shadow: 0 2px 8px rgba(211,150,140,0.08); }
+  .filter-tab.active { background: ${COLORS.secondary}; border-color: ${COLORS.secondary}; color: ${COLORS.bg_light}; }
+  .filter-tab:hover:not(.active) { border-color: ${COLORS.secondary}; }
 
   /* ORDER CARD — full width */
-  .order-card { background: white; border-radius: 20px; box-shadow: 0 2px 12px rgba(211,150,140,0.1); margin-bottom: 20px; overflow: hidden; transition: box-shadow 0.2s; }
-  .order-card:hover { box-shadow: 0 4px 20px rgba(211,150,140,0.18); }
-  .order-card.active-order { border: 2px solid ${COLORS.secondary}; }
-  .card-hdr { padding: 16px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(211,150,140,0.1); cursor: pointer; }
-  .card-order-id { font-size: 16px; font-weight: 800; color: ${COLORS.text_dark}; }
-  .card-date { font-size: 12px; color: rgba(16,86,102,0.5); font-weight: 500; margin-top: 2px; }
+  .order-card { background: white; border-radius: 18px; box-shadow: 0 2px 12px rgba(211,150,140,0.08); margin-bottom: 16px; overflow: hidden; transition: box-shadow 0.2s; }
+  .order-card:hover { box-shadow: 0 4px 20px rgba(211,150,140,0.15); }
+  .card-hdr { padding: 16px 20px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+  .card-id { font-size: 15px; font-weight: 800; color: ${COLORS.text_dark}; }
+  .card-date { font-size: 12px; color: rgba(16,86,102,0.5); margin-top: 2px; }
   .card-stalls { font-size: 12px; color: ${COLORS.secondary}; font-weight: 500; margin-top: 2px; }
-  .card-status-pill { margin-left: auto; flex-shrink: 0; padding: 6px 14px; border-radius: 99px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
-  .card-total { font-size: 15px; font-weight: 800; color: ${COLORS.text_dark}; flex-shrink: 0; }
-  .card-chevron { font-size: 14px; color: rgba(16,86,102,0.35); flex-shrink: 0; transition: transform 0.2s; }
-  .card-chevron.open { transform: rotate(180deg); }
-
-  /* CARD BODY */
-  .card-body { padding: 20px; }
-
-  /* PROGRESS STEPS */
-  .progress-wrap { margin-bottom: 20px; }
-  .progress-steps { display: flex; align-items: flex-start; }
-  .step-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; }
-  .step-wrap:not(:last-child)::after { content: ''; position: absolute; top: 16px; left: 50%; right: -50%; height: 2px; background: rgba(211,150,140,0.2); z-index: 0; }
-  .step-wrap.done:not(:last-child)::after { background: ${COLORS.secondary}; }
-  .step-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; position: relative; z-index: 1; border: 2px solid rgba(211,150,140,0.2); background: white; color: rgba(16,86,102,0.3); transition: all 0.3s; }
-  .step-circle.done { background: ${COLORS.secondary}; border-color: ${COLORS.secondary}; color: white; }
-  .step-circle.current { background: white; border-color: ${COLORS.secondary}; color: ${COLORS.secondary}; box-shadow: 0 0 0 4px rgba(211,150,140,0.15); }
-  .step-label { font-size: 10px; font-weight: 600; color: rgba(16,86,102,0.4); text-align: center; margin-top: 6px; line-height: 1.3; }
-  .step-label.done { color: ${COLORS.secondary}; }
-  .step-label.current { color: ${COLORS.text_dark}; font-weight: 700; }
+  .card-right { margin-left: auto; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .status-pill { padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+  .card-total { font-size: 15px; font-weight: 800; color: ${COLORS.text_dark}; }
+  .chevron { font-size: 13px; color: rgba(16,86,102,0.35); transition: transform 0.2s; }
+  .chevron.open { transform: rotate(180deg); }
 
   /* CARD BODY 2 COL */
-  .card-body-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 4px; }
-
-  /* ITEMS */
+  .card-body { padding: 16px 20px 20px; border-top: 1px solid rgba(211,150,140,0.1); }
+  .card-body-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
   .items-title { font-size: 13px; font-weight: 700; color: ${COLORS.text_dark}; margin-bottom: 10px; }
   .item-mini { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(211,150,140,0.08); }
   .item-mini:last-child { border-bottom: none; }
   .item-mini-img { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
   .item-mini-name { font-size: 13px; font-weight: 600; color: ${COLORS.text_dark}; }
-  .item-mini-stall { font-size: 11px; color: ${COLORS.secondary}; font-weight: 500; }
+  .item-mini-stall { font-size: 11px; color: ${COLORS.secondary}; }
   .item-mini-qty { font-size: 11px; color: rgba(16,86,102,0.5); }
   .item-mini-price { margin-left: auto; font-size: 13px; font-weight: 800; color: ${COLORS.text_dark}; flex-shrink: 0; }
-
-  /* TIMELINE */
   .timeline-title { font-size: 13px; font-weight: 700; color: ${COLORS.text_dark}; margin-bottom: 12px; }
   .tl-item { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
   .tl-dot-wrap { display: flex; flex-direction: column; align-items: center; }
   .tl-dot { width: 10px; height: 10px; border-radius: 50%; background: ${COLORS.secondary}; flex-shrink: 0; margin-top: 3px; }
+  .tl-dot.cancelled { background: #ef4444; }
   .tl-line { width: 2px; flex: 1; background: rgba(211,150,140,0.2); margin: 3px 0; min-height: 14px; }
   .tl-label { font-size: 13px; font-weight: 600; color: ${COLORS.text_dark}; }
   .tl-time { font-size: 11px; color: rgba(16,86,102,0.45); margin-top: 1px; }
+  .reorder-btn { margin-top: 14px; padding: 10px 20px; background: rgba(211,150,140,0.1); color: ${COLORS.secondary}; border: 1.5px solid rgba(211,150,140,0.3); border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif; transition: all 0.2s; }
+  .reorder-btn:hover { background: ${COLORS.secondary}; color: ${COLORS.bg_light}; }
 
   /* EMPTY */
   .empty { text-align: center; padding: 60px 20px; }
@@ -121,7 +112,6 @@ const css = `
   .empty-sub { font-size: 14px; color: ${COLORS.secondary}; margin-bottom: 24px; }
   .empty-btn { padding: 13px 32px; background: ${COLORS.secondary}; color: ${COLORS.bg_light}; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif; transition: opacity 0.2s; }
   .empty-btn:hover { opacity: 0.88; }
-  .sec-title { font-size: 18px; font-weight: 700; color: ${COLORS.text_dark}; margin-bottom: 16px; }
 
   /* MODAL */
   .modal-overlay { position: fixed; inset: 0; background: ${COLORS.overlay}; display: flex; align-items: center; justify-content: center; z-index: 300; backdrop-filter: blur(4px); padding: 20px; }
@@ -141,151 +131,52 @@ const css = `
     .sidebar { transform: translateX(-100%); }
     .sidebar.open { transform: translateX(0); }
     .sidebar-overlay.open { display: block; }
-    .os-main { margin-left: 0; }
+    .hs-main { margin-left: 0; }
     .hamburger { display: block; }
-    .os-page { padding: 20px 16px 60px; }
+    .hs-page { padding: 20px 16px 60px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
     .card-body-grid { grid-template-columns: 1fr; }
   }
-  @media (max-width: 500px) {
-    .step-label { font-size: 9px; }
+  @media (max-width: 480px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .card-hdr { flex-wrap: wrap; gap: 8px; }
-    .active-banner { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .card-right { margin-left: 0; }
   }
 `;
 
-export default function OrderStatus({
+export default function History({
   cart,
   onGoToHome,
   onGoToCart,
-  onGoToHistory,
+  onGoToStatus,
   onLogout,
 }) {
-  const [openCard, setOpenCard] = useState(DUMMY_ORDERS[0]?.id ?? null);
+  const [openCard, setOpenCard] = useState(null);
+  const [filter, setFilter] = useState("all");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  // TODO: ganti dengan useState + useEffect fetch GET /orders
+
+  // TODO: ganti dengan fetch GET /orders
   const orders = DUMMY_ORDERS;
 
   const totalCartItems = Object.values(cart || {}).reduce(
     (a, b) => a + b.qty,
     0
   );
-  const activeOrders = orders.filter(
-    (o) => o.status !== "ready" && o.status !== "cancelled"
+  const filtered = orders.filter((o) =>
+    filter === "all" ? true : o.status === filter
   );
 
-  const getStepState = (order, stepStatus) => {
-    const cfg = STATUS_CONFIG[order.status];
-    const stepCfg = STATUS_CONFIG[stepStatus];
-    if (order.status === "cancelled") return "cancelled";
-    if (cfg.step > stepCfg.step) return "done";
-    if (cfg.step === stepCfg.step) return "current";
-    return "upcoming";
-  };
-
-  const OrderCard = ({ order, isActive = false }) => {
-    const cfg = STATUS_CONFIG[order.status];
-    const isOpen = openCard === order.id;
-    return (
-      <div className={`order-card ${isActive ? "active-order" : ""}`}>
-        <div
-          className="card-hdr"
-          onClick={() => setOpenCard(isOpen ? null : order.id)}
-        >
-          <div>
-            <div className="card-order-id">Pesanan #{order.id}</div>
-            <div className="card-date">{order.created_at}</div>
-            <div className="card-stalls">🏪 {order.stalls.join(", ")}</div>
-          </div>
-          <div
-            className="card-status-pill"
-            style={{ background: cfg.bg, color: cfg.color }}
-          >
-            <span>{cfg.icon}</span> {cfg.label}
-          </div>
-          <div className="card-total">{fmt(order.total)}</div>
-          <span className={`card-chevron ${isOpen ? "open" : ""}`}>▼</span>
-        </div>
-
-        {isOpen && (
-          <div className="card-body">
-            {/* PROGRESS BAR */}
-            {order.status !== "cancelled" && (
-              <div className="progress-wrap">
-                <div className="progress-steps">
-                  {STEPS.map((s) => {
-                    const state = getStepState(order, s);
-                    const sCfg = STATUS_CONFIG[s];
-                    return (
-                      <div
-                        key={s}
-                        className={`step-wrap ${
-                          state === "done" || state === "current" ? "done" : ""
-                        }`}
-                      >
-                        <div className={`step-circle ${state}`}>
-                          {state === "done" ? "✓" : sCfg.icon}
-                        </div>
-                        <div className={`step-label ${state}`}>
-                          {sCfg.label.split(" ")[0]}
-                          <br />
-                          {sCfg.label.split(" ").slice(1).join(" ")}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* 2 KOLOM: detail item + timeline */}
-            <div className="card-body-grid">
-              <div>
-                <div className="items-title">Detail Pesanan</div>
-                {order.items.map((item) => (
-                  <div className="item-mini" key={item.id}>
-                    <img
-                      src={item.foto_url}
-                      alt={item.nama}
-                      className="item-mini-img"
-                    />
-                    <div>
-                      <div className="item-mini-name">{item.nama}</div>
-                      <div className="item-mini-stall">{item.stall_name}</div>
-                      <div className="item-mini-qty">×{item.qty}</div>
-                    </div>
-                    <div className="item-mini-price">{fmt(item.subtotal)}</div>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <div className="timeline-title">📍 Riwayat Status</div>
-                {order.timeline.map((t, i) => (
-                  <div className="tl-item" key={i}>
-                    <div className="tl-dot-wrap">
-                      <div className="tl-dot" />
-                      {i < order.timeline.length - 1 && (
-                        <div className="tl-line" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="tl-label">{t.label}</div>
-                      <div className="tl-time">{t.time}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
+  const totalSpent = orders
+    .filter((o) => o.status !== "cancelled")
+    .reduce((a, o) => a + o.total, 0);
+  const doneOrders = orders.filter((o) => o.status === "ready").length;
+  const cancelledOrders = orders.filter((o) => o.status === "cancelled").length;
 
   return (
     <>
       <style>{css}</style>
-      <div className="os-app">
+      <div className="hs-app">
         <div
           className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`}
           onClick={() => setSidebarOpen(false)}
@@ -321,19 +212,16 @@ export default function OrderStatus({
                 <span className="nav-badge">{totalCartItems}</span>
               )}
             </button>
-            <button className="nav-item active">
-              <span className="nav-item-icon">📋</span> Status Pesanan
-              {activeOrders.length > 0 && (
-                <span className="nav-badge">{activeOrders.length}</span>
-              )}
-            </button>
             <button
               className="nav-item"
               onClick={() => {
-                onGoToHistory();
+                onGoToStatus();
                 setSidebarOpen(false);
               }}
             >
+              <span className="nav-item-icon">📋</span> Status Pesanan
+            </button>
+            <button className="nav-item active">
               <span className="nav-item-icon">🕐</span> Riwayat
             </button>
           </nav>
@@ -354,65 +242,169 @@ export default function OrderStatus({
           </div>
         </aside>
 
-        <div className="os-main">
+        <div className="hs-main">
           <div className="topbar">
             <button className="hamburger" onClick={() => setSidebarOpen(true)}>
               ☰
             </button>
-            <span className="topbar-title">Status Pesanan</span>
+            <span className="topbar-title">Riwayat Pesanan</span>
           </div>
 
-          <div className="os-page">
-            {orders.length === 0 ? (
+          <div className="hs-page">
+            {/* STATS */}
+            <div className="stats-row">
+              <div className="stat-card">
+                <div className="stat-label">Total Pesanan</div>
+                <div className="stat-val">{orders.length}</div>
+                <div className="stat-sub">semua waktu</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Total Pengeluaran</div>
+                <div className="stat-val" style={{ fontSize: 16 }}>
+                  {fmt(totalSpent)}
+                </div>
+                <div className="stat-sub">pesanan selesai</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Pesanan Selesai</div>
+                <div className="stat-val" style={{ color: "#10b981" }}>
+                  {doneOrders}
+                </div>
+                <div className="stat-sub">berhasil diambil</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Dibatalkan</div>
+                <div className="stat-val" style={{ color: "#ef4444" }}>
+                  {cancelledOrders}
+                </div>
+                <div className="stat-sub">tidak diproses</div>
+              </div>
+            </div>
+
+            {/* FILTER */}
+            <div className="filter-row">
+              {FILTER_TABS.map((t) => (
+                <button
+                  key={t.key}
+                  className={`filter-tab ${filter === t.key ? "active" : ""}`}
+                  onClick={() => setFilter(t.key)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* LIST */}
+            {filtered.length === 0 ? (
               <div className="empty">
                 <div className="empty-emo">📋</div>
-                <div className="empty-title">Belum Ada Pesanan</div>
-                <div className="empty-sub">Kamu belum punya pesanan aktif.</div>
+                <div className="empty-title">Tidak ada pesanan</div>
+                <div className="empty-sub">
+                  Belum ada pesanan dengan status ini.
+                </div>
                 <button className="empty-btn" onClick={onGoToHome}>
                   Pesan Sekarang
                 </button>
               </div>
             ) : (
-              <>
-                {activeOrders.length > 0 && (
-                  <div className="active-banner">
-                    <span className="active-banner-icon">🍳</span>
-                    <div>
-                      <div className="active-banner-title">
-                        {activeOrders.length} pesanan sedang diproses
+              filtered.map((order) => {
+                const cfg = STATUS_CONFIG[order.status];
+                const isOpen = openCard === order.id;
+                return (
+                  <div key={order.id} className="order-card">
+                    <div
+                      className="card-hdr"
+                      onClick={() => setOpenCard(isOpen ? null : order.id)}
+                    >
+                      <div>
+                        <div className="card-id">Pesanan #{order.id}</div>
+                        <div className="card-date">{order.created_at}</div>
+                        <div className="card-stalls">
+                          🏪 {order.stalls.join(", ")}
+                        </div>
                       </div>
-                      <div className="active-banner-sub">
-                        Halaman ini update otomatis saat status berubah
+                      <div className="card-right">
+                        <div
+                          className="status-pill"
+                          style={{ background: cfg.bg, color: cfg.color }}
+                        >
+                          {cfg.icon} {cfg.label}
+                        </div>
+                        <div className="card-total">{fmt(order.total)}</div>
+                        <span className={`chevron ${isOpen ? "open" : ""}`}>
+                          ▼
+                        </span>
                       </div>
                     </div>
-                    <div className="active-banner-right">
-                      <div className="active-badge">● Live</div>
-                    </div>
+
+                    {isOpen && (
+                      <div className="card-body">
+                        <div className="card-body-grid">
+                          <div>
+                            <div className="items-title">Detail Item</div>
+                            {order.items.map((item) => (
+                              <div className="item-mini" key={item.id}>
+                                <img
+                                  src={item.foto_url}
+                                  alt={item.nama}
+                                  className="item-mini-img"
+                                />
+                                <div>
+                                  <div className="item-mini-name">
+                                    {item.nama}
+                                  </div>
+                                  <div className="item-mini-stall">
+                                    {item.stall_name}
+                                  </div>
+                                  <div className="item-mini-qty">
+                                    ×{item.qty}
+                                  </div>
+                                </div>
+                                <div className="item-mini-price">
+                                  {fmt(item.subtotal)}
+                                </div>
+                              </div>
+                            ))}
+                            {order.status === "ready" && (
+                              <button
+                                className="reorder-btn"
+                                onClick={onGoToHome}
+                              >
+                                🔄 Pesan Lagi
+                              </button>
+                            )}
+                          </div>
+                          <div>
+                            <div className="timeline-title">
+                              📍 Riwayat Status
+                            </div>
+                            {order.timeline.map((t, i) => (
+                              <div className="tl-item" key={i}>
+                                <div className="tl-dot-wrap">
+                                  <div
+                                    className={`tl-dot ${
+                                      t.status === "cancelled"
+                                        ? "cancelled"
+                                        : ""
+                                    }`}
+                                  />
+                                  {i < order.timeline.length - 1 && (
+                                    <div className="tl-line" />
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="tl-label">{t.label}</div>
+                                  <div className="tl-time">{t.time}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-
-                {activeOrders.length > 0 && (
-                  <>
-                    <div className="sec-title">⚡ Pesanan Aktif</div>
-                    {activeOrders.map((o) => (
-                      <OrderCard key={o.id} order={o} isActive />
-                    ))}
-                  </>
-                )}
-
-                {orders.filter((o) => o.status === "ready").length > 0 && (
-                  <>
-                    <div className="sec-title" style={{ marginTop: 28 }}>
-                      ✅ Siap Diambil
-                    </div>
-                    {orders
-                      .filter((o) => o.status === "ready")
-                      .map((o) => (
-                        <OrderCard key={o.id} order={o} />
-                      ))}
-                  </>
-                )}
-              </>
+                );
+              })
             )}
           </div>
         </div>

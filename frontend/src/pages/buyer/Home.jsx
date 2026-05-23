@@ -1,129 +1,42 @@
 import { useState, useEffect } from "react";
+import {
+  USER,
+  STALLS as stalls,
+  ALL_MENUS as allMenus,
+  POPULAR_MENUS as popularMenus,
+  DUMMY_NOTIFS as dummyNotifs,
+  DUMMY_ORDERS,
+  STATUS_CONFIG,
+} from "../../data/DummyData";
 
-// ── Dummy data ────────────────────────────────────────────────────
-const USER = { name: "Budi Santoso", email: "budi@gmail.com" };
+// ── Derived dari dummyData ────────────────────────────────────────
+const dummyActiveOrders = DUMMY_ORDERS.filter(
+  (o) => o.status !== "ready" && o.status !== "cancelled"
+).map((o) => ({
+  id: o.id,
+  total: o.total,
+  status: o.status,
+  items: o.items.map((i) => `${i.nama} ×${i.qty}`).join(", "),
+  created_at: o.created_at,
+}));
 
-const stalls = [
-  { id: 1, name: "Stan Padang", emoji: "🍛", count: 2 },
-  { id: 2, name: "Ayam Geprek", emoji: "🍗", count: 2 },
-  { id: 3, name: "Minuman", emoji: "🧃", count: 2 },
-];
-
-const allMenus = [
-  {
-    id: 1,
-    stall_id: 1,
-    nama: "Nasi Rendang",
-    harga: 15000,
-    stok: 20,
-    foto_url:
-      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80",
-    stall_name: "Stan Padang",
-  },
-  {
-    id: 2,
-    stall_id: 1,
-    nama: "Ayam Gulai",
-    harga: 18000,
-    stok: 15,
-    foto_url:
-      "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&q=80",
-    stall_name: "Stan Padang",
-  },
-  {
-    id: 3,
-    stall_id: 2,
-    nama: "Ayam Geprek L1",
-    harga: 12000,
-    stok: 25,
-    foto_url:
-      "https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=400&q=80",
-    stall_name: "Ayam Geprek",
-  },
-  {
-    id: 4,
-    stall_id: 2,
-    nama: "Ayam Geprek L5",
-    harga: 15000,
-    stok: 20,
-    foto_url:
-      "https://images.unsplash.com/photo-1562967916-eb82221dfb92?w=400&q=80",
-    stall_name: "Ayam Geprek",
-  },
-  {
-    id: 5,
-    stall_id: 3,
-    nama: "Es Teh Manis",
-    harga: 5000,
-    stok: 30,
-    foto_url:
-      "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&q=80",
-    stall_name: "Minuman",
-  },
-  {
-    id: 6,
-    stall_id: 3,
-    nama: "Jus Alpukat",
-    harga: 10000,
-    stok: 0,
-    foto_url:
-      "https://images.unsplash.com/photo-1546173159-315724a31696?w=400&q=80",
-    stall_name: "Minuman",
-  },
-];
-
-const popularMenus = [allMenus[0], allMenus[2], allMenus[1]];
-
-// Dummy active orders (dari Firestore nanti)
-const dummyActiveOrders = [
-  {
-    id: 5,
-    total: 30000,
-    status: "cooking",
-    items: "Nasi Rendang ×2",
-    created_at: "10:23",
-  },
-];
-
-// Dummy notifications (dari Firestore nanti)
-const dummyNotifs = [
-  { id: 1, msg: "Pesanan #5 sedang dimasak 🍳", time: "10:25", read: false },
-  {
-    id: 2,
-    msg: "Pesanan #3 sudah siap diambil! ✅",
-    time: "09:45",
-    read: true,
-  },
-];
+const statusLabel = Object.fromEntries(
+  Object.entries(STATUS_CONFIG).map(([k, v]) => [k, v.label])
+);
 
 const fmt = (n) => "Rp " + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
-const statusColor = {
-  pending: "#f59e0b",
-  paid: "#3b82f6",
-  cooking: "#D3968C",
-  ready: "#10b981",
-  cancelled: "#ef4444",
-};
-const statusLabel = {
-  pending: "Menunggu",
-  paid: "Dibayar",
-  cooking: "Dimasak 🍳",
-  ready: "Siap Diambil ✅",
-  cancelled: "Dibatalkan",
-};
-
 // ── Theme Configuration ──────────────────────────────────────────
 const COLORS = {
-    primary: "#ffffff",      
-    secondary: "#D3968C",    // Dusty Rose (Button, Badge, Accent)
-    accent: "#c07060",       // Rose lebih gelap (Hover/Gradient)
-    bg_light: "#F7F4D5",     // Krem muda (Background utama)
-    text_dark: "#105666",
-    white: "#ffffff",
-    text_muted: "rgba(247,244,213,0.5)",
-    overlay: "rgba(16,86,102,0.4)"
-  };
+  primary: "#ffffff",
+  secondary: "#D3968C",
+  accent: "#c07060",
+  bg_light: "#F7F4D5",
+  text_dark: "#105666",
+  white: "#ffffff",
+  text_muted: "rgba(247,244,213,0.5)",
+  overlay: "rgba(16,86,102,0.4)",
+};
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
@@ -154,20 +67,19 @@ const css = `
 
   .sidebar-nav { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; }
 
-  /* Tambahkan pembungkus untuk konten yang bisa di-scroll */
   .sidebar-content-wrapper {
     flex: 1;
-    overflow-y: auto; /* Munculkan scrollbar jika konten kepanjangan */
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
-    scrollbar-width: thin; /* Untuk Firefox */
+    scrollbar-width: thin;
     scrollbar-color: rgba(247,244,213,0.2) transparent;
   }
   .nav-item {
     display: flex; align-items: center; gap: 12px;
     padding: 11px 14px; border-radius: 12px;
     cursor: pointer; transition: all 0.2s;
-    color: ${COLORS.text_dark};; font-size: 14px; font-weight: 500;
+    color: ${COLORS.text_dark}; font-size: 14px; font-weight: 500;
     border: none; background: none; width: 100%; text-align: left;
     font-family: 'Poppins', sans-serif; position: relative;
   }
@@ -182,9 +94,7 @@ const css = `
     display: flex; align-items: center; justify-content: center;
     padding: 0 4px;
   }
-  
 
-  /* Notif panel di sidebar */
   .notif-panel {
     margin: 0 12px 8px;
     background: rgba(247,244,213,0.5);
@@ -209,7 +119,6 @@ const css = `
   .notif-msg { font-size: 12px; color: ${COLORS.text_dark}; line-height: 1.4; }
   .notif-time { font-size: 10px; color: rgba(16,86,102,0.4); margin-top: 2px; }
 
-  /* Active order in sidebar */
   .active-order-panel {
     margin: 0 12px 12px;
     background: rgba(211,150,140,0.2);
@@ -222,7 +131,7 @@ const css = `
     text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
   }
   .aop-item { padding: 4px 0; }
-  .aop-items-text { font-size: 12px; color: ${COLORS.text_dark};margin-bottom: 4px; }
+  .aop-items-text { font-size: 12px; color: ${COLORS.text_dark}; margin-bottom: 4px; }
   .aop-status {
     display: inline-block;
     font-size: 11px; font-weight: 700;
@@ -251,7 +160,7 @@ const css = `
     display: flex; align-items: center; gap: 10px;
     padding: 10px 14px; border-radius: 12px;
     cursor: pointer; transition: all 0.2s;
-    color: ${COLORS.text_dark};; font-size: 13px; font-weight: 600;
+    color: ${COLORS.text_dark}; font-size: 13px; font-weight: 600;
     border: none; background: none; width: 100%;
     font-family: 'Poppins', sans-serif;
   }
@@ -311,7 +220,6 @@ const css = `
   .hero-search-input {
     width: 100%; padding: 13px 18px 13px 46px;
     border-radius: 14px; border: none;
-    color: ${COLORS.primary};;
     color: #105666; font-size: 14px;
     font-family: 'Poppins', sans-serif; outline: none;
     box-shadow: 0 4px 16px rgba(0,0,0,0.1);
@@ -429,7 +337,7 @@ const css = `
   }
   .co-btn:hover { opacity: 0.9; }
   .co-left { display: flex; align-items: center; gap: 12px; }
-  .co-badge { background: ${COLORS.primary}; color: ${COLORS.text_dark};; font-size: 12px; font-weight: 700; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .co-badge { background: ${COLORS.primary}; color: ${COLORS.text_dark}; font-size: 12px; font-weight: 700; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
   .co-label { font-size: 15px; font-weight: 700; color: #F7F4D5; }
   .co-price { font-size: 15px; font-weight: 800; color: rgba(247,244,213,0.9); }
 
@@ -459,6 +367,31 @@ const css = `
     to { transform: translateX(0); opacity: 1; }
   }
 
+  /* LOGOUT MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: ${COLORS.overlay};
+    display: flex; align-items: center; justify-content: center;
+    z-index: 300; backdrop-filter: blur(4px); padding: 20px;
+  }
+  .modal {
+    background: ${COLORS.bg_light}; border-radius: 24px; padding: 32px;
+    width: 100%; max-width: 380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    animation: popIn 0.25s ease; text-align: center;
+  }
+  @keyframes popIn {
+    from { transform: scale(0.92); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .modal-icon { font-size: 48px; margin-bottom: 14px; }
+  .modal-title { font-size: 20px; font-weight: 800; color: ${COLORS.text_dark}; margin-bottom: 8px; }
+  .modal-sub { font-size: 14px; color: rgba(16,86,102,0.6); margin-bottom: 24px; line-height: 1.5; }
+  .modal-btns { display: flex; gap: 12px; }
+  .modal-cancel { flex: 1; padding: 13px; background: rgba(211,150,140,0.12); color: ${COLORS.text_dark}; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif; transition: background 0.2s; }
+  .modal-cancel:hover { background: rgba(211,150,140,0.22); }
+  .modal-confirm-logout { flex: 1; padding: 13px; background: ${COLORS.secondary}; color: ${COLORS.bg_light}; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif; box-shadow: 0 4px 16px rgba(211,150,140,0.35); transition: opacity 0.2s; }
+  .modal-confirm-logout:hover { opacity: 0.88; }
+
   /* RESPONSIVE */
   @media (max-width: 900px) {
     .sidebar { transform: translateX(-100%); }
@@ -474,12 +407,9 @@ const css = `
     .mgrid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
     .mcard-img { height: 105px; }
     .topbar { padding: 0 16px; height: 56px; }
-    .notif-text, .cart-text { 
-    display: none; }
-    .topbar-right {
-    gap: 8px; /* Kecilin jarak antar icon di mobile */}
-    .cart-topbar-btn {
-    padding: 8px 12px; /* Tombol keranjang jadi lebih ringkas */}
+    .notif-text, .cart-text { display: none; }
+    .topbar-right { gap: 8px; }
+    .cart-topbar-btn { padding: 8px 12px; }
   }
 `;
 
@@ -495,9 +425,10 @@ export default function Home({
   const [search, setSearch] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Simulasi notif realtime dari Firestore
-  // TODO: ganti dengan onSnapshot Firestore
+  // Toast muncul SEKALI saat mount — [] dependency
+  // TODO: ganti dengan Firestore onSnapshot
   useEffect(() => {
     const timer = setTimeout(() => {
       setToast("🍳 Pesanan #5 sedang dimasak!");
@@ -538,15 +469,13 @@ export default function Home({
     <>
       <style>{css}</style>
       <div className="app">
-        {/* SIDEBAR OVERLAY (mobile) */}
         <div
           className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`}
           onClick={() => setSidebarOpen(false)}
         />
 
-        {/* SIDEBAR */}
+        {/* SIDEBAR — UI dipertahankan persis, hanya data diganti */}
         <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
-          {/* Brand */}
           <div className="sidebar-brand">
             <span className="sidebar-brand-icon">🍽️</span>
             <div>
@@ -555,7 +484,6 @@ export default function Home({
             </div>
           </div>
 
-          {/* Nav */}
           <div className="sidebar-content-wrapper">
             <nav className="sidebar-nav">
               <button
@@ -599,7 +527,6 @@ export default function Home({
               </button>
             </nav>
 
-            {/* Active Order */}
             {dummyActiveOrders.length > 0 && (
               <div className="active-order-panel">
                 <div className="aop-title">⚡ Pesanan Aktif</div>
@@ -612,7 +539,6 @@ export default function Home({
               </div>
             )}
 
-            {/* Notifikasi */}
             <div className="notif-panel">
               <div className="notif-panel-title">🔔 Notifikasi</div>
               {dummyNotifs.map((n) => (
@@ -627,7 +553,6 @@ export default function Home({
             </div>
           </div>
 
-          {/* Footer */}
           <div className="sidebar-footer">
             <div className="user-info">
               <div className="user-avatar">{USER.name[0]}</div>
@@ -636,7 +561,11 @@ export default function Home({
                 <div className="user-email">{USER.email}</div>
               </div>
             </div>
-            <button className="logout-btn" onClick={onLogout}>
+            {/* Logout sekarang buka modal dulu */}
+            <button
+              className="logout-btn"
+              onClick={() => setShowLogoutModal(true)}
+            >
               <span>🚪</span> Keluar
             </button>
           </div>
@@ -644,7 +573,6 @@ export default function Home({
 
         {/* MAIN CONTENT */}
         <div className="main-content">
-          {/* TOPBAR */}
           <div className="topbar">
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <button
@@ -657,7 +585,6 @@ export default function Home({
                 Selamat Datang, {USER.name.split(" ")[0]}! 👋
               </span>
             </div>
-
             <div className="topbar-right">
               {unreadNotifs > 0 && (
                 <div
@@ -674,7 +601,6 @@ export default function Home({
                   <span className="notif-text">notif baru</span>
                 </div>
               )}
-
               <button className="cart-topbar-btn" onClick={onGoToCart}>
                 🛒 <span className="cart-text">Keranjang</span>
                 {totalItems > 0 && (
@@ -684,7 +610,6 @@ export default function Home({
             </div>
           </div>
 
-          {/* HERO */}
           <div className="hero">
             <div className="hero-sub">Mau makan apa hari ini?</div>
             <div className="hero-title">
@@ -701,9 +626,7 @@ export default function Home({
             </div>
           </div>
 
-          {/* PAGE BODY */}
           <div className="page-body">
-            {/* STALL CHIPS */}
             <div className="chip-row">
               <div
                 className={`chip ${!activeStall ? "active" : ""}`}
@@ -728,7 +651,6 @@ export default function Home({
               ))}
             </div>
 
-            {/* POPULAR */}
             {showPopular && (
               <div style={{ marginBottom: 36 }}>
                 <div className="sec-hd">
@@ -757,7 +679,6 @@ export default function Home({
               </div>
             )}
 
-            {/* MENU GRID */}
             <div className="sec-hd">
               <span className="sec-title">
                 {search
@@ -826,7 +747,6 @@ export default function Home({
           </div>
         </div>
 
-        {/* BOTTOM CART BAR */}
         {totalItems > 0 && (
           <div className="bot-bar">
             <button className="co-btn" onClick={onGoToCart}>
@@ -839,10 +759,44 @@ export default function Home({
           </div>
         )}
 
-        {/* TOAST NOTIF REALTIME */}
         {toast && (
           <div className="toast">
             <span>🔔</span> {toast}
+          </div>
+        )}
+
+        {/* LOGOUT MODAL */}
+        {showLogoutModal && (
+          <div
+            className="modal-overlay"
+            onClick={() => setShowLogoutModal(false)}
+          >
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-icon">🚪</div>
+              <div className="modal-title">Keluar dari akun?</div>
+              <div className="modal-sub">
+                Kamu akan keluar dari Kantin Digital.
+                <br />
+                Keranjang yang belum checkout akan hilang.
+              </div>
+              <div className="modal-btns">
+                <button
+                  className="modal-cancel"
+                  onClick={() => setShowLogoutModal(false)}
+                >
+                  Batal
+                </button>
+                <button
+                  className="modal-confirm-logout"
+                  onClick={() => {
+                    setShowLogoutModal(false);
+                    onLogout();
+                  }}
+                >
+                  Ya, Keluar
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
