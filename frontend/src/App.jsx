@@ -61,17 +61,26 @@ function App() {
   }
 
   // Seller pages
-  if (user?.role === "seller") {
-    if (page === "dashboard") return <Dashboard onNavigate={go} user={user} onLogout={handleLogout} />;
-    return (
-      <div style={{ position: 'relative' }}>
-        <Dashboard onNavigate={go} user={user} onLogout={handleLogout} />
-        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 20 }}>
-          {page === "menu" ? <Menu user={user} /> : <Orders user={user} />}
-        </div>
-      </div>
-    );
+if (user?.role === "seller") {
+  if (page === "dashboard") {
+    return <Dashboard onNavigate={go} user={user} onLogout={handleLogout} />;
   }
+  // Handle logout dari seller
+  if (page === "logout") {
+    handleLogout();
+    return null;
+  }
+  return (
+    <div style={{ position: 'relative' }}>
+      <Dashboard onNavigate={go} user={user} onLogout={handleLogout} />
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 20 }}>
+        {page === "menu"
+          ? <Menu onNavigate={go} user={user} />
+          : <Orders onNavigate={go} user={user} />}
+      </div>
+    </div>
+  );
+}
 
   // Fallback
   return <Login onLoginSuccess={handleLoginSuccess} onGoToRegister={() => go("register")} />;
