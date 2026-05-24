@@ -12,18 +12,16 @@ import Orders from './pages/seller/Orders';
 function App() {
   const [cart, setCart] = useState({});
   const [page, setPage] = useState("login");
-  const [user, setUser] = useState(null); // { id, name, role, ... }
+  const [user, setUser] = useState(null);
 
   const go = (target) => setPage(target);
 
-  // Dipanggil setelah login/register berhasil
   const handleLoginSuccess = (userData) => {
     setUser(userData);
     if (userData.role === "buyer") go("home");
     else go("dashboard");
   };
 
-  // Logout — reset semua state
   const handleLogout = () => {
     setUser(null);
     setCart({});
@@ -41,8 +39,15 @@ function App() {
     onLogout:      handleLogout,
   };
 
-  // ── RENDER ────────────────────────────────────────────────────
-  // Auth pages
+  const sellerProps = {
+    user,
+    onNavigate: (key) => {
+      if (key === "logout") { handleLogout(); return; }
+      go(key);
+    },
+  };
+
+  // ── Auth ─────────────────────────────────────────────────────
   if (page === "login") {
     return <Login onLoginSuccess={handleLoginSuccess} onGoToRegister={() => go("register")} />;
   }
@@ -50,7 +55,7 @@ function App() {
     return <Register onRegisterSuccess={handleLoginSuccess} onGoToLogin={() => go("login")} />;
   }
 
-  // Buyer pages
+  // ── Buyer ─────────────────────────────────────────────────────
   if (user?.role === "buyer") {
     switch (page) {
       case "cart":    return <Cart        {...buyerProps} onBack={() => go("home")} />;
@@ -60,27 +65,14 @@ function App() {
     }
   }
 
-  // Seller pages
-if (user?.role === "seller") {
-  if (page === "dashboard") {
-    return <Dashboard onNavigate={go} user={user} onLogout={handleLogout} />;
+  // ── Seller ─────────────────────────────────────────────────────
+  if (user?.role === "seller") {
+    switch (page) {
+      case "menu":      return <Menu    {...sellerProps} />;
+      case "orders":    return <Orders  {...sellerProps} />;
+      default:          return <Dashboard {...sellerProps} />;
+    }
   }
-  // Handle logout dari seller
-  if (page === "logout") {
-    handleLogout();
-    return null;
-  }
-  return (
-    <div style={{ position: 'relative' }}>
-      <Dashboard onNavigate={go} user={user} onLogout={handleLogout} />
-      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', zIndex: 20 }}>
-        {page === "menu"
-          ? <Menu onNavigate={go} user={user} />
-          : <Orders onNavigate={go} user={user} />}
-      </div>
-    </div>
-  );
-}
 
   // Fallback
   return <Login onLoginSuccess={handleLoginSuccess} onGoToRegister={() => go("register")} />;
