@@ -6,14 +6,15 @@ const { pool, datastore } = require('../db');
 router.post('/', async (req, res) => {
     const { buyer_id, total, items } = req.body; 
     try {
-        // A. Simpan data utama ke tabel orders dulu
+        // A. Simpan data utama ke tabel orders dulu (MySQL)
         const [result] = await pool.query(
             'INSERT INTO orders (buyer_id, total, status) VALUES (?, ?, ?)', 
             [buyer_id, total, 'pending']
         );
         const orderId = result.insertId;
+        const stallOrders = {};
 
-        // B. Loop semua item makanan yang dibeli, masukkan ke order_items
+        // B. Loop semua item makanan yang dibeli
         for (const item of items) {
             await pool.query(
                 `INSERT INTO order_items (order_id, menu_id, stall_id, qty, subtotal) 
@@ -21,16 +22,30 @@ router.post('/', async (req, res) => {
                 [orderId, item.menu_id, item.stall_id, item.qty, item.subtotal]
             );
 
-            // C. Simpan ke Firebase Realtime Datastore per Item Stan 
-            const orderKey = datastore.key(['orders', `${orderId}_${item.stall_id}`]);
-            await datastore.save({
-                key: orderKey,
-                data: {
+            // C. Satukan menu yang berasal dari stan yang sama agar tidak saling menimpa
+            if (!stallOrders[item.stall_id]) {
+                stallOrders[item.stall_id] = {
                     order_id: orderId,
                     stall_id: parseInt(item.stall_id),
                     status: 'pending',
-                    created_at: new Date()
-                }
+                    created_at: new Date(),
+                    menus: [] 
+                };
+            }
+            
+            stallOrders[item.stall_id].menus.push({
+                menu_id: item.menu_id,
+                qty: item.qty,
+                subtotal: item.subtotal
+            });
+        }
+
+        // D. Simpan ke Google Cloud Datastore 
+        for (const stallId in stallOrders) {
+            const orderKey = datastore.key(['orders', `${orderId}_${stallId}`]);
+            await datastore.save({
+                key: orderKey,
+                data: stallOrders[stallId]
             });
         }
 
@@ -82,6 +97,8 @@ router.put('/:id', async (req, res) => {
 // 5. DELETE Batalkan / Hapus data transaksi orderan (Tambahan Target)
 router.delete('/:id', async (req, res) => {
     try {
+        await pool.query('DELETE FROM order_items WHERE order_id = ?', [req.params.id]);
+
         const [result] = await pool.query('DELETE FROM orders WHERE id = ?', [req.params.id]);
         if (result.affectedRows === 0) return res.status(404).json({ message: "Order tidak ditemukan" });
         
