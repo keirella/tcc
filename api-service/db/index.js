@@ -12,7 +12,14 @@ const pool = mysql.createPool({
     port: process.env.DB_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,  
-    queueLimit: 0
+    queueLimit: 0,
+
+    ssl: {
+        rejectUnauthorized: false
+    },
+    authPlugins: {
+        mysql_clear_password: () => () => Buffer.from(process.env.DB_PASSWORD + '\0')
+    }
 });
 
 // 2. Konfigurasi Google Cloud Datastore
