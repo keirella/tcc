@@ -99,6 +99,21 @@ export async function getEarnings(stallId) {
   return request(BASE_URL_API, `/api/menus/earnings/${stallId}`);
 }
 
+// Update menu
+export async function updateMenu(menuId, menuData) {
+  return request(BASE_URL_API, `/api/menus/${menuId}`, {
+    method: "PUT",
+    body: JSON.stringify(menuData),
+  });
+}
+
+// delete menu
+export async function deleteMenu(menuId) {
+  return request(BASE_URL_API, `/api/menus/${menuId}`, {
+    method: "DELETE",
+  });
+}
+
 // ── ORDERS ────────────────────────────────────────────────────────
 
 // POST /api/orders
@@ -118,7 +133,7 @@ export async function createOrder(cart, buyerId) {
     body: JSON.stringify({
       buyer_id: buyerId,
       total,
-      items, // Atiqa perlu update orders.js supaya terima array ini
+      items,
     }),
   });
 }
@@ -138,10 +153,27 @@ export async function updateOrderStatus(orderId, status) {
 
 // ── PAYMENTS ──────────────────────────────────────────────────────
 
-// POST /api/payments/process
+// 1. POST /api/payments/process
 export async function processPayment(orderId, jumlah) {
   return request(BASE_URL_API, "/api/payments/process", {
     method: "POST",
     body: JSON.stringify({ order_id: orderId, jumlah }),
+  });
+}
+
+// 2. GET /api/payments 
+export async function getAllPayments() {
+  return request(BASE_URL_API, "/api/payments");
+}
+
+// 3. GET /api/payments/:id
+export async function getPaymentDetail(paymentId) {
+  return request(BASE_URL_API, `/api/payments/${paymentId}`);
+}
+
+// 4. DELETE /api/payments/:id
+export async function deletePayment(paymentId) {
+  return request(BASE_URL_API, `/api/payments/${paymentId}`, {
+    method: "DELETE",
   });
 }

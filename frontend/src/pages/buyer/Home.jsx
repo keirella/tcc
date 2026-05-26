@@ -1,9 +1,18 @@
 import { useState, useEffect } from "react";
+// import {
+//   USER,
+//   STALLS as stalls,
+//   ALL_MENUS as allMenus,
+//   POPULAR_MENUS as popularMenus,
+//   DUMMY_NOTIFS as dummyNotifs,
+//   DUMMY_ORDERS,
+//   STATUS_CONFIG,
+// } from "../../data/DummyData";
+
+
+import { getMenus, getStalls } from "../../services/api"; 
 import {
   USER,
-  STALLS as stalls,
-  ALL_MENUS as allMenus,
-  POPULAR_MENUS as popularMenus,
   DUMMY_NOTIFS as dummyNotifs,
   DUMMY_ORDERS,
   STATUS_CONFIG,
@@ -413,6 +422,20 @@ const css = `
   }
 `;
 
+// export default function Home({
+//   cart,
+//   setCart,
+//   onGoToCart,
+//   onGoToStatus,
+//   onGoToHistory,
+//   onLogout,
+// }) {
+//   const [activeStall, setActiveStall] = useState(null);
+//   const [search, setSearch] = useState("");
+//   const [sidebarOpen, setSidebarOpen] = useState(false);
+//   const [toast, setToast] = useState(null);
+//   const [showLogoutModal, setShowLogoutModal] = useState(false);
+
 export default function Home({
   cart,
   setCart,
@@ -421,20 +444,45 @@ export default function Home({
   onGoToHistory,
   onLogout,
 }) {
+  // Tambahkan state baru untuk menampung data dari database:
+  const [stalls, setStalls] = useState([]);
+  const [allMenus, setAllMenus] = useState([]);
+  const [popularMenus, setPopularMenus] = useState([]);
+
   const [activeStall, setActiveStall] = useState(null);
   const [search, setSearch] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-
   // Toast muncul SEKALI saat mount — [] dependency
   // TODO: ganti dengan Firestore onSnapshot
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     setToast("🍳 Pesanan #5 sedang dimasak!");
+  //     setTimeout(() => setToast(null), 4000);
+  //   }, 3000);
+  //   return () => clearTimeout(timer);
+  // }, []);
+
+  // Mengambil data stan dan menu asli dari database
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setToast("🍳 Pesanan #5 sedang dimasak!");
-      setTimeout(() => setToast(null), 4000);
-    }, 3000);
-    return () => clearTimeout(timer);
+    const loadHomeData = async () => {
+      try {
+        const dataMenus = await getMenus();
+        setAllMenus(dataMenus);
+        
+        // Mengambil menu populer (misal: ambil 4 menu pertama atau filter berdasar rating)
+        setPopularMenus(dataMenus.slice(0, 4)); 
+
+        // Jika backend punya API getStalls, panggil di sini
+        const dataStalls = await getStalls();
+        setStalls(dataStalls);
+      } catch (error) {
+        console.error("Gagal memuat data utama Home:", error.message);
+      }
+    };
+
+    loadHomeData();
   }, []);
 
   const filtered = allMenus.filter((m) => {
