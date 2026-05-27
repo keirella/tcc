@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { USER, DUMMY_ORDERS, getRekoMenus } from "../../data/DummyData";
+import { USER, getRekoMenus } from "../../data/DummyData";
+import { checkoutCart, getMenus } from "../../services/api";
 
 const COLORS = {
   primary: "#ffffff",
@@ -21,6 +22,8 @@ function groupByStall(cart) {
   });
   return groups;
 }
+
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80";
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
@@ -88,6 +91,9 @@ const css = `
   .note-input:focus { border-color: ${COLORS.secondary}; }
   .note-input::placeholder { color: rgba(16,86,102,0.3); }
 
+  /* ERROR BANNER */
+  .error-banner { background: rgba(239,68,68,0.1); border: 1.5px solid rgba(239,68,68,0.3); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #dc2626; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+
   /* REKOMENDASI */
   .reko-section { margin-top: 8px; }
   .reko-row { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
@@ -99,7 +105,6 @@ const css = `
   .reko-stall { font-size: 9px; color: ${COLORS.secondary}; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 2px; }
   .reko-name { font-size: 12px; font-weight: 700; color: ${COLORS.text_dark}; margin-bottom: 4px; line-height: 1.3; }
   .reko-price { font-size: 12px; font-weight: 800; color: ${COLORS.text_dark}; margin-bottom: 8px; }
-  .reko-from { font-size: 10px; color: ${COLORS.secondary}; font-style: italic; margin-bottom: 6px; }
   .reko-add { width: 100%; padding: 6px; background: ${COLORS.secondary}; color: ${COLORS.bg_light}; border: none; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif; transition: opacity 0.2s; }
   .reko-add:hover { opacity: 0.85; }
 
@@ -117,7 +122,8 @@ const css = `
   .est-label { font-size: 12px; color: ${COLORS.text_dark}; font-weight: 500; }
   .est-val { font-size: 13px; font-weight: 700; color: ${COLORS.secondary}; }
   .pay-btn { width: 100%; margin-top: 18px; padding: 15px; background: ${COLORS.secondary}; color: ${COLORS.bg_light}; border: none; border-radius: 14px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif; box-shadow: 0 6px 20px rgba(211,150,140,0.35); transition: opacity 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-  .pay-btn:hover { opacity: 0.88; }
+  .pay-btn:hover:not(:disabled) { opacity: 0.88; }
+  .pay-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
   /* MODAL */
   .overlay { position: fixed; inset: 0; background: ${COLORS.overlay}; display: flex; align-items: center; justify-content: center; z-index: 300; backdrop-filter: blur(4px); padding: 20px; }
@@ -135,9 +141,12 @@ const css = `
   .modal-total-val { font-size: 22px; font-weight: 800; color: ${COLORS.secondary}; }
   .modal-btns { display: flex; gap: 12px; }
   .modal-cancel { flex: 1; padding: 14px; background: rgba(211,150,140,0.12); color: ${COLORS.text_dark}; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif; transition: background 0.2s; }
-  .modal-cancel:hover { background: rgba(211,150,140,0.22); }
+  .modal-cancel:hover:not(:disabled) { background: rgba(211,150,140,0.22); }
+  .modal-cancel:disabled { opacity: 0.5; cursor: not-allowed; }
   .modal-confirm { flex: 2; padding: 14px; background: ${COLORS.secondary}; color: ${COLORS.bg_light}; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif; box-shadow: 0 4px 16px rgba(211,150,140,0.4); transition: opacity 0.2s; }
-  .modal-confirm:hover { opacity: 0.88; }
+  .modal-confirm:hover:not(:disabled) { opacity: 0.88; }
+  .modal-confirm:disabled { opacity: 0.55; cursor: not-allowed; }
+  .modal-error { background: rgba(239,68,68,0.1); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #dc2626; font-weight: 500; margin-bottom: 14px; }
 
   /* EMPTY & SUCCESS */
   .empty-page { max-width: 500px; margin: 80px auto; padding: 0 24px; text-align: center; }
@@ -173,12 +182,15 @@ export default function Cart({
   onGoToStatus,
   onGoToHistory,
   onLogout,
+  user,
 }) {
   const [notes, setNotes] = useState({});
   const [showModal, setShowModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [ordered, setOrdered] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const items = Object.values(cart);
   const groups = groupByStall(cart);
@@ -186,31 +198,37 @@ export default function Cart({
   const subtotal = items.reduce((a, b) => a + b.harga * b.qty, 0);
   const stallCount = Object.keys(groups).length;
 
-  // Rekomendasi: menu dari stan yang belum ada di cart
   const rekoMenus = getRekoMenus(cart);
+
+  const displayName = user?.name || USER.name;
 
   const addQty = (item) =>
     setCart((p) => ({ ...p, [item.id]: { ...item, qty: item.qty + 1 } }));
   const removeQty = (item) =>
     setCart((p) => {
       const n = { ...p };
-      if (n[item.id].qty > 1)
-        n[item.id] = { ...n[item.id], qty: n[item.id].qty - 1 };
+      if (n[item.id].qty > 1) n[item.id] = { ...n[item.id], qty: n[item.id].qty - 1 };
       else delete n[item.id];
       return n;
     });
   const deleteItem = (item) =>
-    setCart((p) => {
-      const n = { ...p };
-      delete n[item.id];
-      return n;
-    });
+    setCart((p) => { const n = { ...p }; delete n[item.id]; return n; });
 
-  const handleConfirm = () => {
-    // TODO: POST /orders + POST /payments ke API
-    setShowModal(false);
-    setOrdered(true);
-    setCart({});
+  const handleConfirm = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const buyerId = user?.id || null;
+      // checkoutCart = createOrder + processPayment sekaligus
+      await checkoutCart(cart, buyerId);
+      setShowModal(false);
+      setOrdered(true);
+      setCart({});
+    } catch (err) {
+      setError(err.message || "Gagal memproses pesanan. Coba lagi.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const SidebarNav = () => (
@@ -228,53 +246,29 @@ export default function Cart({
           </div>
         </div>
         <nav className="sidebar-nav">
-          <button
-            className="nav-item"
-            onClick={() => {
-              onGoToHome();
-              setSidebarOpen(false);
-            }}
-          >
+          <button className="nav-item" onClick={() => { onGoToHome(); setSidebarOpen(false); }}>
             <span className="nav-item-icon">🏠</span> Menu
           </button>
-          <button
-            className="nav-item active"
-            onClick={() => setSidebarOpen(false)}
-          >
+          <button className="nav-item active" onClick={() => setSidebarOpen(false)}>
             <span className="nav-item-icon">🛒</span> Keranjang
             {totalItems > 0 && <span className="nav-badge">{totalItems}</span>}
           </button>
-          <button
-            className="nav-item"
-            onClick={() => {
-              onGoToStatus();
-              setSidebarOpen(false);
-            }}
-          >
+          <button className="nav-item" onClick={() => { onGoToStatus(); setSidebarOpen(false); }}>
             <span className="nav-item-icon">📋</span> Status Pesanan
           </button>
-          <button
-            className="nav-item"
-            onClick={() => {
-              onGoToHistory();
-              setSidebarOpen(false);
-            }}
-          >
+          <button className="nav-item" onClick={() => { onGoToHistory(); setSidebarOpen(false); }}>
             <span className="nav-item-icon">🕐</span> Riwayat
           </button>
         </nav>
         <div className="sidebar-footer">
           <div className="user-info">
-            <div className="user-avatar">{USER.name[0]}</div>
+            <div className="user-avatar">{displayName[0]}</div>
             <div>
-              <div className="user-name">{USER.name}</div>
-              <div className="user-email">{USER.email}</div>
+              <div className="user-name">{displayName}</div>
+              <div className="user-email">{user?.email || USER.email}</div>
             </div>
           </div>
-          <button
-            className="logout-btn"
-            onClick={() => setShowLogoutModal(true)}
-          >
+          <button className="logout-btn" onClick={() => setShowLogoutModal(true)}>
             <span>🚪</span> Keluar
           </button>
         </div>
@@ -290,20 +284,14 @@ export default function Cart({
           <SidebarNav />
           <div className="cart-main">
             <div className="topbar">
-              <button
-                className="hamburger"
-                onClick={() => setSidebarOpen(true)}
-              >
-                ☰
-              </button>
+              <button className="hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
               <span className="topbar-title">Pesanan Berhasil!</span>
             </div>
             <div className="empty-page">
               <div className="empty-emo">🎉</div>
               <div className="empty-title">Pesanan Diterima!</div>
               <div className="empty-sub">
-                Pesananmu sudah masuk ke sistem.
-                <br />
+                Pesananmu sudah masuk ke sistem.<br />
                 Pantau statusnya di halaman Status Pesanan!
               </div>
               <button className="empty-btn" onClick={onGoToStatus}>
@@ -324,28 +312,18 @@ export default function Cart({
           <SidebarNav />
           <div className="cart-main">
             <div className="topbar">
-              <button
-                className="hamburger"
-                onClick={() => setSidebarOpen(true)}
-              >
-                ☰
-              </button>
-              <button className="back-btn" onClick={onBack}>
-                ←
-              </button>
+              <button className="hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
+              <button className="back-btn" onClick={onBack}>←</button>
               <span className="topbar-title">Keranjang</span>
             </div>
             <div className="empty-page">
               <div className="empty-emo">🛒</div>
               <div className="empty-title">Keranjang Kosong</div>
               <div className="empty-sub">
-                Belum ada makanan yang dipilih.
-                <br />
+                Belum ada makanan yang dipilih.<br />
                 Yuk pilih dulu dari menu!
               </div>
-              <button className="empty-btn" onClick={onBack}>
-                ← Kembali ke Menu
-              </button>
+              <button className="empty-btn" onClick={onBack}>← Kembali ke Menu</button>
             </div>
           </div>
         </div>
@@ -360,17 +338,11 @@ export default function Cart({
         <SidebarNav />
         <div className="cart-main">
           <div className="topbar">
-            <button className="hamburger" onClick={() => setSidebarOpen(true)}>
-              ☰
-            </button>
-            <button className="back-btn" onClick={onBack}>
-              ←
-            </button>
+            <button className="hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
+            <button className="back-btn" onClick={onBack}>←</button>
             <div>
               <div className="topbar-title">Keranjang</div>
-              <div className="topbar-sub">
-                {totalItems} item · {stallCount} stan
-              </div>
+              <div className="topbar-sub">{totalItems} item · {stallCount} stan</div>
             </div>
           </div>
 
@@ -378,105 +350,72 @@ export default function Cart({
             {/* KIRI */}
             <div>
               <div className="col-title">Pesananmu</div>
+
+              {error && (
+                <div className="error-banner">⚠️ {error}</div>
+              )}
+
               {Object.entries(groups).map(([stallName, stallItems]) => {
-                const stallSubtotal = stallItems.reduce(
-                  (a, b) => a + b.harga * b.qty,
-                  0
-                );
+                const stallSubtotal = stallItems.reduce((a, b) => a + b.harga * b.qty, 0);
                 return (
                   <div className="stall-group" key={stallName}>
                     <div className="stall-hdr">
                       <span>🏪</span>
                       <span className="stall-hdr-name">{stallName}</span>
-                      <span className="stall-hdr-ct">
-                        ({stallItems.reduce((a, b) => a + b.qty, 0)} item)
-                      </span>
-                      <span className="stall-subtotal">
-                        {fmt(stallSubtotal)}
-                      </span>
+                      <span className="stall-hdr-ct">({stallItems.reduce((a, b) => a + b.qty, 0)} item)</span>
+                      <span className="stall-subtotal">{fmt(stallSubtotal)}</span>
                     </div>
                     {stallItems.map((item) => (
                       <div className="item-row" key={item.id}>
                         <img
-                          src={item.foto_url}
+                          src={item.foto_url || FALLBACK_IMG}
                           alt={item.nama}
                           className="item-img"
+                          onError={e => { e.target.src = FALLBACK_IMG; }}
                         />
                         <div className="item-info">
                           <div className="item-name">{item.nama}</div>
-                          <div className="item-price-unit">
-                            {fmt(item.harga)} / porsi
-                          </div>
+                          <div className="item-price-unit">{fmt(item.harga)} / porsi</div>
                         </div>
                         <div className="item-right">
-                          <button
-                            className="del-btn"
-                            onClick={() => deleteItem(item)}
-                          >
-                            🗑️
-                          </button>
+                          <button className="del-btn" onClick={() => deleteItem(item)}>🗑️</button>
                           <div className="qty-ctrl">
-                            <button
-                              className="qty-btn"
-                              onClick={() => removeQty(item)}
-                            >
-                              −
-                            </button>
+                            <button className="qty-btn" onClick={() => removeQty(item)}>−</button>
                             <span className="qty-num">{item.qty}</span>
-                            <button
-                              className="qty-btn"
-                              onClick={() => addQty(item)}
-                            >
-                              +
-                            </button>
+                            <button className="qty-btn" onClick={() => addQty(item)}>+</button>
                           </div>
-                          <div className="item-subtotal">
-                            {fmt(item.harga * item.qty)}
-                          </div>
+                          <div className="item-subtotal">{fmt(item.harga * item.qty)}</div>
                         </div>
                       </div>
                     ))}
                     <div className="note-wrap">
-                      <span className="note-label">
-                        📝 Catatan untuk {stallName}
-                      </span>
+                      <span className="note-label">📝 Catatan untuk {stallName}</span>
                       <textarea
                         className="note-input"
                         rows={2}
                         placeholder="Contoh: jangan pedas, tambah kerupuk..."
                         value={notes[stallName] || ""}
-                        onChange={(e) =>
-                          setNotes((p) => ({
-                            ...p,
-                            [stallName]: e.target.value,
-                          }))
-                        }
+                        onChange={(e) => setNotes((p) => ({ ...p, [stallName]: e.target.value }))}
                       />
                     </div>
                   </div>
                 );
               })}
 
-              {/* REKOMENDASI — dari stan yang belum ada di cart */}
+              {/* REKOMENDASI */}
               {rekoMenus.length > 0 && (
                 <div className="reko-section">
-                  <div
-                    style={{
-                      fontSize: 16,
-                      fontWeight: 700,
-                      color: COLORS.text_dark,
-                      marginBottom: 14,
-                    }}
-                  >
+                  <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.text_dark, marginBottom: 14 }}>
                     🍴 Mau tambah dari stan lain?
                   </div>
                   <div className="reko-row">
                     {rekoMenus.map((m) => (
                       <div className="reko-card" key={m.id}>
                         <img
-                          src={m.foto_url}
+                          src={m.foto_url || FALLBACK_IMG}
                           alt={m.nama}
                           className="reko-img"
+                          onError={e => { e.target.src = FALLBACK_IMG; }}
                         />
                         <div className="reko-body">
                           <div className="reko-stall">{m.stall_name}</div>
@@ -509,21 +448,15 @@ export default function Cart({
                   <span className="est-icon">⏱️</span>
                   <div>
                     <div className="est-label">Estimasi siap</div>
-                    <div className="est-val">
-                      ~{stallCount * 10}–{stallCount * 15} menit
-                    </div>
+                    <div className="est-val">~{stallCount * 10}–{stallCount * 15} menit</div>
                   </div>
                 </div>
                 {Object.entries(groups).map(([stallName, stallItems]) => (
                   <div key={stallName}>
                     {stallItems.map((item) => (
                       <div className="sum-row" key={item.id}>
-                        <span className="sum-label">
-                          {item.nama} ×{item.qty}
-                        </span>
-                        <span className="sum-val">
-                          {fmt(item.harga * item.qty)}
-                        </span>
+                        <span className="sum-label">{item.nama} ×{item.qty}</span>
+                        <span className="sum-val">{fmt(item.harga * item.qty)}</span>
                       </div>
                     ))}
                   </div>
@@ -537,7 +470,7 @@ export default function Cart({
                   <span className="sum-total-label">Total Bayar</span>
                   <span className="sum-total-val">{fmt(subtotal)}</span>
                 </div>
-                <button className="pay-btn" onClick={() => setShowModal(true)}>
+                <button className="pay-btn" onClick={() => { setError(null); setShowModal(true); }}>
                   🛒 Bayar Sekarang
                 </button>
               </div>
@@ -547,21 +480,15 @@ export default function Cart({
 
         {/* MODAL BAYAR */}
         {showModal && (
-          <div className="overlay" onClick={() => setShowModal(false)}>
+          <div className="overlay" onClick={() => !loading && setShowModal(false)}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-title">Konfirmasi Pesanan</div>
-              <div className="modal-sub">
-                Pastikan pesananmu sudah benar sebelum bayar.
-              </div>
+              <div className="modal-sub">Pastikan pesananmu sudah benar sebelum bayar.</div>
               <div className="modal-items">
                 {items.map((item) => (
                   <div className="modal-item" key={item.id}>
-                    <span className="modal-item-name">
-                      {item.nama} ×{item.qty}
-                    </span>
-                    <span className="modal-item-val">
-                      {fmt(item.harga * item.qty)}
-                    </span>
+                    <span className="modal-item-name">{item.nama} ×{item.qty}</span>
+                    <span className="modal-item-val">{fmt(item.harga * item.qty)}</span>
                   </div>
                 ))}
               </div>
@@ -569,15 +496,13 @@ export default function Cart({
                 <span className="modal-total-lbl">Total Pembayaran</span>
                 <span className="modal-total-val">{fmt(subtotal)}</span>
               </div>
+              {error && <div className="modal-error">⚠️ {error}</div>}
               <div className="modal-btns">
-                <button
-                  className="modal-cancel"
-                  onClick={() => setShowModal(false)}
-                >
+                <button className="modal-cancel" onClick={() => setShowModal(false)} disabled={loading}>
                   Batal
                 </button>
-                <button className="modal-confirm" onClick={handleConfirm}>
-                  ✓ Konfirmasi &amp; Bayar
+                <button className="modal-confirm" onClick={handleConfirm} disabled={loading}>
+                  {loading ? "⏳ Memproses..." : "✓ Konfirmasi & Bayar"}
                 </button>
               </div>
             </div>
@@ -587,30 +512,13 @@ export default function Cart({
         {/* MODAL LOGOUT */}
         {showLogoutModal && (
           <div className="overlay" onClick={() => setShowLogoutModal(false)}>
-            <div
-              className="modal"
-              onClick={(e) => e.stopPropagation()}
-              style={{ textAlign: "center" }}
-            >
+            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: "center" }}>
               <div style={{ fontSize: 48, marginBottom: 14 }}>🚪</div>
               <div className="modal-title">Keluar dari akun?</div>
-              <div className="modal-sub">
-                Keranjang yang belum di-checkout akan hilang.
-              </div>
+              <div className="modal-sub">Keranjang yang belum di-checkout akan hilang.</div>
               <div className="modal-btns">
-                <button
-                  className="modal-cancel"
-                  onClick={() => setShowLogoutModal(false)}
-                >
-                  Batal
-                </button>
-                <button
-                  className="modal-confirm"
-                  onClick={() => {
-                    setShowLogoutModal(false);
-                    onLogout();
-                  }}
-                >
+                <button className="modal-cancel" onClick={() => setShowLogoutModal(false)}>Batal</button>
+                <button className="modal-confirm" onClick={() => { setShowLogoutModal(false); onLogout(); }}>
                   Ya, Keluar
                 </button>
               </div>

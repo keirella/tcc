@@ -1,13 +1,6 @@
 // ── api.js ────────────────────────────────────────────────────────
-// Taruh di: src/services/api.js
-//
-// CARA PAKAI:
-// 1. Ganti BASE_URL_AUTH dan BASE_URL_API dengan URL dari Atiqa
-// 2. Di tiap komponen, ganti dummy data dengan fungsi dari sini
-// ─────────────────────────────────────────────────────────────────
 
-// TODO: ganti dengan URL Cloud Run Atiqa setelah deploy
-// Saat development lokal:
+// TODO: ganti dengan URL Cloud Run setelah deploy
 const BASE_URL_AUTH = "http://localhost:5001";  // auth-service
 const BASE_URL_API  = "http://localhost:5002";  // api-service
 
@@ -50,20 +43,23 @@ export async function login(email, password) {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
-  // Simpan token ke localStorage
-  if (data.token) localStorage.setItem("token", data.token);
+
+  if (data.token) {
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+  }
   return data; // { token, user: { id, name, role } }
 }
 
 export function logout() {
   localStorage.removeItem("token");
+  localStorage.removeItem("user");
 }
 
 export function getSavedUser() {
   try {
     const token = getToken();
     if (!token) return null;
-    // Decode payload JWT (tanpa verifikasi — hanya untuk baca data)
     const payload = JSON.parse(atob(token.split(".")[1]));
     return payload; // { id, role, iat, exp }
   } catch {
@@ -73,19 +69,50 @@ export function getSavedUser() {
 
 // ── STALLS ────────────────────────────────────────────────────────
 
-// GET /api/stalls
+// GET /api/stalls — ambil semua stan
 export async function getStalls() {
   return request(BASE_URL_API, "/api/stalls");
 }
 
+// GET /api/stalls/:id — detail 1 stan
+export async function getStallById(stallId) {
+  return request(BASE_URL_API, `/api/stalls/${stallId}`);
+}
+
+// POST /api/stalls — daftarkan stan baru (admin/seller)
+// body: { nama_stan, pemilik, pemilik_id }
+export async function createStall(stallData) {
+  return request(BASE_URL_API, "/api/stalls", {
+    method: "POST",
+    body: JSON.stringify(stallData),
+  });
+}
+
+// DELETE /api/stalls/:id — hapus/tutup stan
+export async function deleteStall(stallId) {
+  return request(BASE_URL_API, `/api/stalls/${stallId}`, {
+    method: "DELETE",
+  });
+}
+
+// GET /api/stalls/:id/earnings — pendapatan per stan
+export async function getStallEarnings(stallId) {
+  return request(BASE_URL_API, `/api/stalls/${stallId}/earnings`);
+}
+
 // ── MENUS ─────────────────────────────────────────────────────────
 
-// GET /api/menus
+// GET /api/menus — semua menu
 export async function getMenus() {
   return request(BASE_URL_API, "/api/menus");
 }
 
-// POST /api/menus  (seller only)
+// GET /api/menus/:id — detail 1 menu
+export async function getMenuById(menuId) {
+  return request(BASE_URL_API, `/api/menus/${menuId}`);
+}
+
+// POST /api/menus — tambah menu baru (seller)
 // body: { stall_id, nama, harga, foto_url, stok }
 export async function addMenu(menuData) {
   return request(BASE_URL_API, "/api/menus", {
@@ -94,12 +121,8 @@ export async function addMenu(menuData) {
   });
 }
 
-// GET /api/menus/earnings/:stallId  (seller only)
-export async function getEarnings(stallId) {
-  return request(BASE_URL_API, `/api/menus/earnings/${stallId}`);
-}
-
-// Update menu
+// PUT /api/menus/:id — edit menu (seller)
+// body: { nama, harga, foto_url, stok }
 export async function updateMenu(menuId, menuData) {
   return request(BASE_URL_API, `/api/menus/${menuId}`, {
     method: "PUT",
@@ -107,18 +130,23 @@ export async function updateMenu(menuId, menuData) {
   });
 }
 
-// delete menu
+// DELETE /api/menus/:id — hapus menu (seller)
 export async function deleteMenu(menuId) {
   return request(BASE_URL_API, `/api/menus/${menuId}`, {
     method: "DELETE",
   });
 }
 
+// GET /api/menus/earnings/:stallId — pendapatan via route menus
+export async function getEarnings(stallId) {
+  return request(BASE_URL_API, `/api/menus/earnings/${stallId}`);
+}
+
 // ── ORDERS ────────────────────────────────────────────────────────
 
-// POST /api/orders
+// POST /api/orders — checkout keranjang
+// Otomatis buat order + simpan semua item
 // cart = { [menu_id]: { id, nama, harga, stall_id, qty, ... } }
-// Kirim semua item dalam 1 request — Atiqa perlu update orders.js untuk terima array
 export async function createOrder(cart, buyerId) {
   const items = Object.values(cart).map(item => ({
     menu_id: item.id,
@@ -130,20 +158,26 @@ export async function createOrder(cart, buyerId) {
 
   return request(BASE_URL_API, "/api/orders", {
     method: "POST",
-    body: JSON.stringify({
-      buyer_id: buyerId,
-      total,
-      items,
-    }),
+    body: JSON.stringify({ buyer_id: buyerId, total, items }),
   });
+  // Returns: { message, orderId }
 }
 
-// GET /api/orders  (nanti ditambah Atiqa)
+// GET /api/orders — semua pesanan
+// Backend belum support filter by buyer_id — kalau nanti ditambah, pakai query param
 export async function getOrders() {
   return request(BASE_URL_API, "/api/orders");
+  // Returns: array of { id, buyer_id, total, status, created_at }
 }
 
-// PUT /api/orders/:id  (nanti ditambah Atiqa — untuk seller update status)
+// GET /api/orders/:id — detail 1 order + items-nya
+export async function getOrderById(orderId) {
+  return request(BASE_URL_API, `/api/orders/${orderId}`);
+  // Returns: { id, buyer_id, total, status, created_at, items: [...] }
+}
+
+// PUT /api/orders/:id — update status pesanan (seller/admin)
+// status: 'pending' | 'paid' | 'cooking' | 'ready' | 'cancelled'
 export async function updateOrderStatus(orderId, status) {
   return request(BASE_URL_API, `/api/orders/${orderId}`, {
     method: "PUT",
@@ -151,9 +185,18 @@ export async function updateOrderStatus(orderId, status) {
   });
 }
 
+// DELETE /api/orders/:id — batalkan + hapus data order (admin)
+export async function deleteOrder(orderId) {
+  return request(BASE_URL_API, `/api/orders/${orderId}`, {
+    method: "DELETE",
+  });
+}
+
 // ── PAYMENTS ──────────────────────────────────────────────────────
 
-// 1. POST /api/payments/process
+// POST /api/payments/process — proses pembayaran order
+// Otomatis: update status order → 'paid', catat ke tabel payments
+// body: { order_id, jumlah }
 export async function processPayment(orderId, jumlah) {
   return request(BASE_URL_API, "/api/payments/process", {
     method: "POST",
@@ -161,19 +204,36 @@ export async function processPayment(orderId, jumlah) {
   });
 }
 
-// 2. GET /api/payments 
+// GET /api/payments — semua riwayat pembayaran global
 export async function getAllPayments() {
   return request(BASE_URL_API, "/api/payments");
 }
 
-// 3. GET /api/payments/:id
+// GET /api/payments/:id — detail 1 pembayaran
 export async function getPaymentDetail(paymentId) {
   return request(BASE_URL_API, `/api/payments/${paymentId}`);
 }
 
-// 4. DELETE /api/payments/:id
+// DELETE /api/payments/:id — hapus data pembayaran (admin)
 export async function deletePayment(paymentId) {
   return request(BASE_URL_API, `/api/payments/${paymentId}`, {
     method: "DELETE",
   });
+}
+
+// ── CHECKOUT HELPER ───────────────────────────────────────────────
+// Gabungkan createOrder + processPayment dalam 1 langkah
+// Dipakai di Cart.jsx saat user klik "Konfirmasi & Bayar"
+export async function checkoutCart(cart, buyerId) {
+  // Step 1: buat order
+  const orderRes = await createOrder(cart, buyerId);
+  const orderId = orderRes.orderId;
+
+  // Step 2: langsung proses bayar
+  const total = Object.values(cart).reduce(
+    (a, item) => a + item.harga * item.qty, 0
+  );
+  await processPayment(orderId, total);
+
+  return { orderId, total };
 }
