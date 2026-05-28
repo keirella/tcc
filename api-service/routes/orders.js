@@ -5,6 +5,7 @@ const { pool, datastore } = require('../db');
 // 1. Buat Pesanan Baru / Checkout Keranjang 
 router.post('/', async (req, res) => {
     const { buyer_id, total, items } = req.body; 
+    console.log("NODE TIME:", new Date());
     try {
         // A. Simpan data utama ke tabel orders dulu (MySQL)
         const [result] = await pool.query(
@@ -66,20 +67,44 @@ router.get('/', async (req, res) => {
 });
 
 // 3. GET Ambil detail 1 orderan + daftar item makanannya (Tambahan Target)
+// router.get('/:id', async (req, res) => {
+//     try {
+//         const [order] = await pool.query('SELECT * FROM orders WHERE id = ?', [req.params.id]);
+//         if (order.length === 0) return res.status(404).json({ message: "Order tidak ditemukan" });
+        
+//         const [items] = await pool.query('SELECT * FROM order_items WHERE order_id = ?', [req.params.id]);
+//         res.json({ 
+//             ...order[0], 
+//             items: items 
+//         });
+//     } catch (err) { 
+//         res.status(500).json({ error: err.message }); 
+//     }
+// });
+// Di orders.js, ganti GET /:id
 router.get('/:id', async (req, res) => {
     try {
-        const [order] = await pool.query('SELECT * FROM orders WHERE id = ?', [req.params.id]);
-        if (order.length === 0) return res.status(404).json({ message: "Order tidak ditemukan" });
-        
-        const [items] = await pool.query('SELECT * FROM order_items WHERE order_id = ?', [req.params.id]);
-        res.json({ 
-            ...order[0], 
-            items: items 
-        });
-    } catch (err) { 
-        res.status(500).json({ error: err.message }); 
+      const [order] = await pool.query('SELECT * FROM orders WHERE id = ?', [req.params.id]);
+      if (order.length === 0) return res.status(404).json({ message: "Order tidak ditemukan" });
+      
+      // JOIN menus dan stalls biar dapat nama
+      const [items] = await pool.query(`
+        SELECT 
+          oi.*,
+          m.nama,
+          m.foto_url,
+          s.nama_stan as stall_name
+        FROM order_items oi
+        LEFT JOIN menus m ON oi.menu_id = m.id
+        LEFT JOIN stalls s ON oi.stall_id = s.id
+        WHERE oi.order_id = ?
+      `, [req.params.id]);
+      
+      res.json({ ...order[0], items });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
-});
+  });
 
 // 4. PUT Update status pesanan / Kelola Status Seller (Tambahan Target)
 router.put('/:id', async (req, res) => {

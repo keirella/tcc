@@ -1,7 +1,12 @@
+require('dotenv').config();
+process.env.TZ = 'Asia/Jakarta';
 const express = require('express');
 const cors = require('cors');
 const app = express();
-require('dotenv').config();
+
+console.log("WAKTU:", new Date().toString());
+console.log("TZ:", process.env.TZ);
+
 
 // Import Routes
 const menuRoutes = require('./routes/menus');
