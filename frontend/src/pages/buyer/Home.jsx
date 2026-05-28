@@ -1,16 +1,15 @@
 import { useState, useEffect } from "react";
-import { getMenus, getStalls } from "../../services/api";
-import { USER, DUMMY_NOTIFS as dummyNotifs, DUMMY_ORDERS, STATUS_CONFIG } from "../../data/DummyData";
+import { getMenus, getStalls, getOrders, getOrderById } from "../../services/api";
+import { requestNotifPermission, listenForegroundNotif } from "../../services/firebaseNotif";
+import { fmtRelative } from "../../utils/dateUtils";
+import { USER, STATUS_CONFIG } from "../../data/DummyData";
 
-const dummyActiveOrders = DUMMY_ORDERS
-  .filter(o => o.status !== "ready" && o.status !== "cancelled")
-  .map(o => ({
-    id: o.id, total: o.total, status: o.status,
-    items: o.items.map(i => `${i.nama} ×${i.qty}`).join(", "),
-    created_at: o.created_at,
-  }));
+// Ambil hanya status aktif (bukan selesai/batal)
+const ACTIVE_STATUSES = ["pending", "paid", "cooking"];
 
-const statusLabel = Object.fromEntries(Object.entries(STATUS_CONFIG).map(([k, v]) => [k, v.label]));
+const statusLabel = Object.fromEntries(
+  Object.entries(STATUS_CONFIG).map(([k, v]) => [k, v.label])
+);
 const fmt = (n) => "Rp " + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 const STALL_EMOJIS = { 1: "🍛", 2: "🍗", 3: "🧃", 4: "🍜", 5: "🥤" };
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80";
@@ -38,14 +37,6 @@ const css = `
   .nav-item.active { background: ${COLORS.bg_light}; font-weight: 700; }
   .nav-item-icon { font-size: 18px; flex-shrink: 0; }
   .nav-badge { position: absolute; right: 12px; background: ${COLORS.secondary}; color: white; font-size: 10px; font-weight: 700; min-width: 18px; height: 18px; border-radius: 99px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
-  .notif-panel { margin: 0 12px 8px; background: rgba(247,244,213,0.5); border-radius: 14px; padding: 12px; border: 1px solid rgba(247,244,213,0.9); }
-  .notif-panel-title { font-size: 11px; font-weight: 700; color: ${COLORS.text_dark}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
-  .notif-item { display: flex; gap: 8px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid rgba(211,150,140,0.1); }
-  .notif-item:last-child { border-bottom: none; }
-  .notif-dot { width: 7px; height: 7px; border-radius: 50%; background: ${COLORS.secondary}; flex-shrink: 0; margin-top: 5px; }
-  .notif-dot.read { background: ${COLORS.text_dark}; }
-  .notif-msg { font-size: 12px; color: ${COLORS.text_dark}; line-height: 1.4; }
-  .notif-time { font-size: 10px; color: rgba(16,86,102,0.4); margin-top: 2px; }
   .active-order-panel { margin: 0 12px 12px; background: rgba(211,150,140,0.2); border-radius: 14px; padding: 12px; border: 1px solid rgba(211,150,140,0.25); }
   .aop-title { font-size: 11px; font-weight: 700; color: #D3968C; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
   .aop-item { padding: 4px 0; }
@@ -65,6 +56,26 @@ const css = `
   .cart-topbar-btn { display: flex; align-items: center; gap: 8px; background: ${COLORS.secondary}; color: ${COLORS.bg_light}; border: none; border-radius: 12px; padding: 9px 18px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif; transition: opacity 0.2s; }
   .cart-topbar-btn:hover { opacity: 0.88; }
   .cart-topbar-badge { background: ${COLORS.primary}; color: ${COLORS.text_dark}; font-size: 11px; font-weight: 700; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .notif-topbar-btn { position: relative; display: flex; align-items: center; justify-content: center; background: rgba(211,150,140,0.12); color: ${COLORS.text_dark}; border: none; border-radius: 12px; width: 42px; height: 42px; font-size: 18px; cursor: pointer; font-family: 'Poppins', sans-serif; transition: background 0.2s; }
+  .notif-topbar-btn:hover { background: rgba(211,150,140,0.22); }
+  .notif-topbar-btn.has-notif { background: rgba(211,150,140,0.18); }
+  .notif-count { position: absolute; top: 4px; right: 4px; background: ${COLORS.secondary}; color: white; font-size: 9px; font-weight: 700; min-width: 16px; height: 16px; border-radius: 99px; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+  .notif-panel-popup { position: absolute; top: 54px; right: 0; width: 320px; background: white; border-radius: 18px; box-shadow: 0 8px 32px rgba(16,86,102,0.15); z-index: 200; overflow: hidden; animation: popIn 0.2s ease; }
+  @keyframes popIn { from { transform: scale(0.95) translateY(-8px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+  .notif-panel-hdr { padding: 16px 18px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(211,150,140,0.12); }
+  .notif-panel-title { font-size: 15px; font-weight: 700; color: ${COLORS.text_dark}; }
+  .notif-panel-close { background: none; border: none; font-size: 18px; cursor: pointer; color: rgba(16,86,102,0.4); padding: 2px 6px; border-radius: 6px; }
+  .notif-panel-close:hover { background: rgba(211,150,140,0.1); }
+  .notif-list { max-height: 340px; overflow-y: auto; }
+  .notif-row { display: flex; gap: 12px; padding: 13px 18px; border-bottom: 1px solid rgba(211,150,140,0.07); align-items: flex-start; transition: background 0.15s; cursor: default; }
+  .notif-row:last-child { border-bottom: none; }
+  .notif-row.unread { background: rgba(211,150,140,0.05); }
+  .notif-row:hover { background: rgba(211,150,140,0.08); }
+  .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: ${COLORS.secondary}; flex-shrink: 0; margin-top: 5px; }
+  .notif-dot.read { background: rgba(16,86,102,0.2); }
+  .notif-row-msg { font-size: 13px; color: ${COLORS.text_dark}; line-height: 1.45; font-weight: 500; margin-bottom: 3px; }
+  .notif-row-time { font-size: 11px; color: rgba(16,86,102,0.4); }
+  .notif-empty { padding: 32px 18px; text-align: center; font-size: 13px; color: rgba(16,86,102,0.4); }
   .hero { background: linear-gradient(135deg, ${COLORS.secondary} 0%, ${COLORS.accent} 100%); padding: 32px 32px 28px; position: relative; overflow: hidden; }
   .hero::before { content: ''; position: absolute; top: -60px; right: -60px; width: 240px; height: 240px; background: rgba(247,244,213,0.1); border-radius: 50%; }
   .hero-sub { font-size: 13px; color: rgba(247,244,213,0.8); font-weight: 500; margin-bottom: 4px; }
@@ -126,8 +137,6 @@ const css = `
   .co-price { font-size: 15px; font-weight: 800; color: rgba(247,244,213,0.9); }
   .hamburger { display: none; background: none; border: none; font-size: 22px; cursor: pointer; color: #105666; }
   .sidebar-overlay { display: none; position: fixed; inset: 0; background: ${COLORS.overlay}; z-index: 190; }
-  .toast { position: fixed; top: 80px; right: 24px; background: ${COLORS.primary}; color: ${COLORS.text_dark}; padding: 14px 20px; border-radius: 14px; font-size: 13px; font-weight: 600; box-shadow: 0 8px 24px rgba(16,86,102,0.3); z-index: 999; display: flex; align-items: center; gap: 10px; animation: slideInRight 0.3s ease; max-width: 320px; }
-  @keyframes slideInRight { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
   .modal-overlay { position: fixed; inset: 0; background: ${COLORS.overlay}; display: flex; align-items: center; justify-content: center; z-index: 300; backdrop-filter: blur(4px); padding: 20px; }
   .modal { background: ${COLORS.bg_light}; border-radius: 24px; padding: 32px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: popIn 0.25s ease; text-align: center; }
   @keyframes popIn { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -167,26 +176,23 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
   const [activeStall, setActiveStall] = useState(null);
   const [search, setSearch] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [toast, setToast] = useState(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [notifs, setNotifs] = useState([]); // diisi dari Firebase listener
+
+  // Pesanan aktif dari API — kosong dulu sampai data datang
+  const [activeOrders, setActiveOrders] = useState([]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const [dataMenus, dataStalls] = await Promise.all([getMenus(), getStalls()]);
 
-        
-        console.log("Menus:", dataMenus);
-        console.log("Stalls:", dataStalls);
-
-
-        // Join stall_name ke tiap menu
         const menusWithStall = dataMenus.map(m => ({
           ...m,
           stall_name: dataStalls.find(s => s.id === m.stall_id)?.nama_stan || "Stan",
         }));
 
-        // Format stalls untuk chip filter
         const formattedStalls = dataStalls.map(s => ({
           id: s.id,
           name: s.nama_stan,
@@ -206,6 +212,80 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
     loadData();
   }, []);
 
+  // Setup Firebase push notification setelah login
+  useEffect(() => {
+    let unsubscribe = () => {};
+    const setup = async () => {
+      await requestNotifPermission();
+      unsubscribe = listenForegroundNotif(({ title, body, data }) => {
+        const newNotif = {
+          title,
+          body,
+          data,
+          time: fmtRelative(new Date().toISOString()),
+          read: false,
+        };
+        setNotifs(prev => [newNotif, ...prev].slice(0, 20)); // max 20 notif
+      });
+    };
+    setup().catch(console.warn);
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch active orders milik user ini, lengkap dengan nama item
+  useEffect(() => {
+    const loadActiveOrders = async () => {
+      try {
+        const allOrders = await getOrders();
+        const buyerId = user?.id;
+
+        // DEBUG: log untuk cek format buyer_id dari BE
+        if (allOrders.length > 0) {
+          console.log("[DEBUG] Sample order buyer_id:", allOrders[0].buyer_id, "| user.id:", buyerId);
+        }
+
+        // Filter by buyer_id — handle kalau BE kirim number atau string
+        const mine = allOrders.filter(o =>
+          ACTIVE_STATUSES.includes(o.status) &&
+          (buyerId ? String(o.buyer_id) === String(buyerId) : false)
+        );
+
+        if (mine.length === 0) {
+          setActiveOrders([]);
+          return;
+        }
+
+        // Fetch detail tiap order untuk dapat nama item
+        // Jalankan parallel, maksimal 5 sekaligus supaya tidak spam BE
+        const details = await Promise.allSettled(
+          mine.slice(0, 5).map(o => getOrderById(o.id))
+        );
+
+        const active = mine.slice(0, 5).map((o, i) => {
+          const detail = details[i].status === "fulfilled" ? details[i].value : null;
+          const items = detail?.items || [];
+          const itemsText = items
+            .map(item => item.nama ? `${item.nama} ×${item.qty}` : null)
+            .filter(Boolean)
+            .join(", ");
+          return {
+            id: o.id,
+            total: o.total,
+            status: o.status,
+            items: itemsText || `Pesanan #${o.id}`,
+          };
+        });
+
+        setActiveOrders(active);
+      } catch (err) {
+        console.error("Gagal memuat pesanan aktif:", err.message);
+        setActiveOrders([]);
+      }
+    };
+
+    loadActiveOrders();
+  }, [user]);
+
   const filtered = allMenus.filter(m => {
     const stallOk = activeStall ? m.stall_id === activeStall : true;
     const searchOk = m.nama.toLowerCase().includes(search.toLowerCase());
@@ -223,7 +303,6 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
   const totalItems = Object.values(cart).reduce((a, b) => a + b.qty, 0);
   const totalPrice = Object.values(cart).reduce((a, b) => a + b.harga * b.qty, 0);
   const showPopular = !search && !activeStall;
-  const unreadNotifs = dummyNotifs.filter(n => !n.read).length;
   const displayName = user?.name || USER.name;
 
   return (
@@ -231,6 +310,7 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
       <style>{css}</style>
       <div className="app">
         <div className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} />
+        {showNotifPanel && <div style={{ position: "fixed", inset: 0, zIndex: 150 }} onClick={() => setShowNotifPanel(false)} />}
 
         <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
           <div className="sidebar-brand">
@@ -251,36 +331,30 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
               </button>
               <button className="nav-item" onClick={() => { onGoToStatus(); setSidebarOpen(false); }}>
                 <span className="nav-item-icon">📋</span> Status Pesanan
-                {dummyActiveOrders.length > 0 && <span className="nav-badge">{dummyActiveOrders.length}</span>}
+                {activeOrders.length > 0 && <span className="nav-badge">{activeOrders.length}</span>}
               </button>
               <button className="nav-item" onClick={() => { onGoToHistory(); setSidebarOpen(false); }}>
                 <span className="nav-item-icon">🕐</span> Riwayat
               </button>
             </nav>
-            {dummyActiveOrders.length > 0 && (
+
+            {/* Pesanan Aktif — hanya tampil kalau ada data dari API */}
+            {activeOrders.length > 0 && (
               <div className="active-order-panel">
                 <div className="aop-title">⚡ Pesanan Aktif</div>
-                {dummyActiveOrders.map(o => (
+                {activeOrders.map(o => (
                   <div className="aop-item" key={o.id}>
                     <div className="aop-items-text">{o.items}</div>
-                    <span className="aop-status">{statusLabel[o.status]}</span>
+                    <span className="aop-status">{statusLabel[o.status] || o.status}</span>
                   </div>
                 ))}
               </div>
             )}
-            <div className="notif-panel">
-              <div className="notif-panel-title">🔔 Notifikasi</div>
-              {dummyNotifs.map(n => (
-                <div className="notif-item" key={n.id}>
-                  <div className={`notif-dot ${n.read ? "read" : ""}`} />
-                  <div>
-                    <div className="notif-msg">{n.msg}</div>
-                    <div className="notif-time">{n.time}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+
+            {/* Notifikasi — dihapus karena belum ada endpoint dari BE */}
+            {/* TODO: tambahkan kembali setelah BE punya GET /api/notifications */}
           </div>
+
           <div className="sidebar-footer">
             <div className="user-info">
               <div className="user-avatar">{displayName[0]}</div>
@@ -302,11 +376,41 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
               <span className="topbar-title">Selamat Datang, {displayName.split(" ")[0]}! 👋</span>
             </div>
             <div className="topbar-right">
-              {unreadNotifs > 0 && (
-                <div style={{ fontSize: 13, color: "#D3968C", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                  🔔 {unreadNotifs} <span className="notif-text">notif baru</span>
-                </div>
-              )}
+              <div style={{ position: "relative" }}>
+                <button
+                  className={`notif-topbar-btn ${notifs.length > 0 ? "has-notif" : ""}`}
+                  onClick={() => setShowNotifPanel(p => !p)}
+                  title="Notifikasi"
+                >
+                  🔔
+                  {notifs.filter(n => !n.read).length > 0 && (
+                    <span className="notif-count">{notifs.filter(n => !n.read).length}</span>
+                  )}
+                </button>
+                {showNotifPanel && (
+                  <div className="notif-panel-popup">
+                    <div className="notif-panel-hdr">
+                      <span className="notif-panel-title">🔔 Notifikasi</span>
+                      <button className="notif-panel-close" onClick={() => setShowNotifPanel(false)}>✕</button>
+                    </div>
+                    <div className="notif-list">
+                      {notifs.length === 0 ? (
+                        <div className="notif-empty">Belum ada notifikasi</div>
+                      ) : (
+                        notifs.map((n, i) => (
+                          <div key={i} className={`notif-row ${n.read ? "" : "unread"}`}>
+                            <div className={`notif-dot ${n.read ? "read" : ""}`} />
+                            <div>
+                              <div className="notif-row-msg">{n.title && <strong>{n.title} — </strong>}{n.body}</div>
+                              <div className="notif-row-time">{n.time || ""}</div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               <button className="cart-topbar-btn" onClick={onGoToCart}>
                 🛒 <span className="cart-text">Keranjang</span>
                 {totalItems > 0 && <span className="cart-topbar-badge">{totalItems}</span>}
@@ -319,7 +423,12 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
             <div className="hero-title">Pesan dari berbagai stan, bayar sekali. 🎉</div>
             <div className="hero-search-wrap">
               <span className="hero-search-ico">🔍</span>
-              <input className="hero-search-input" placeholder="Cari makanan atau minuman..." value={search} onChange={e => setSearch(e.target.value)} />
+              <input
+                className="hero-search-input"
+                placeholder="Cari makanan atau minuman..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
             </div>
           </div>
 
@@ -419,8 +528,6 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
             </button>
           </div>
         )}
-
-        {toast && <div className="toast"><span>🔔</span> {toast}</div>}
 
         {showLogoutModal && (
           <div className="modal-overlay" onClick={() => setShowLogoutModal(false)}>

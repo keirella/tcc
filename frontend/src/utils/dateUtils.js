@@ -1,100 +1,78 @@
 // ── dateUtils.js ──────────────────────────────────────────────────
 // Taruh di: src/utils/dateUtils.js
-// Format ISO string dari BE ke tampilan manusia
 // ─────────────────────────────────────────────────────────────────
 
-const BULAN = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "Mei",
-  "Jun",
-  "Jul",
-  "Agu",
-  "Sep",
-  "Okt",
-  "Nov",
-  "Des",
-];
+const TZ = "Asia/Jakarta";
+
+function parseDate(isoString) {
+  if (!isoString) return null;
+  // Handle MySQL format "2026-05-28 05:32:00" (spasi bukan T)
+  const s = String(isoString).trim().replace(" ", "T");
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
 
 /**
- * "2026-05-27T16:24:11.000Z" → "27 Mei 2026, 16.24"
- * Kalau input null/undefined → "-"
+ * "2026-05-28T05:32:00.000Z" → "28 Mei 2026, 12.32"
  */
-//   export function fmtDateTime(isoString) {
-//     if (!isoString) return "-";
-//     try {
-//       const d = new Date(isoString);
-//       if (isNaN(d)) return isoString; // kalau bukan ISO, kembalikan apa adanya
-//       const tgl = d.getDate();
-//       const bln = BULAN[d.getMonth()];
-//       const thn = d.getFullYear();
-//       const jam = String(d.getHours()).padStart(2, "0");
-//       const mnt = String(d.getMinutes()).padStart(2, "0");
-//       return `${tgl} ${bln} ${thn}, ${jam}.${mnt}`;
-//     } catch {
-//       return isoString;
-//     }
-//   }
-export function fmtDateTime(dateString) {
-  if (!dateString) return "-";
-
+export function fmtDateTime(isoString) {
+  if (!isoString) return "-";
   try {
-    let d;
-
-    // Kalau format MySQL: 2026-05-28 05:24:18
-    if (dateString.includes(" ") && !dateString.includes("T")) {
-      d = new Date(dateString.replace(" ", "T") + "Z");
-    }
-    // Kalau sudah ISO
-    else {
-      d = new Date(dateString);
-    }
-
-    if (isNaN(d)) return "Invalid date";
-
-    return d.toLocaleString("id-ID", {
-      timeZone: "Asia/Jakarta",
+    const d = parseDate(isoString);
+    if (!d) return String(isoString);
+    const tgl = d.toLocaleDateString("id-ID", {
+      timeZone: TZ,
       day: "numeric",
       month: "long",
       year: "numeric",
+    });
+    const jam = d.toLocaleTimeString("id-ID", {
+      timeZone: TZ,
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false,
     });
+    return `${tgl}, ${jam}`;
   } catch {
-    return dateString;
+    return String(isoString);
   }
 }
+
 /**
- * "2026-05-27T16:24:11.000Z" → "27 Mei 2026"
+ * "2026-05-28T05:32:00.000Z" → "28 Mei 2026"
  */
 export function fmtDate(isoString) {
   if (!isoString) return "-";
   try {
-    const d = new Date(isoString);
-    if (isNaN(d)) return isoString;
-    return `${d.getDate()} ${BULAN[d.getMonth()]} ${d.getFullYear()}`;
+    const d = parseDate(isoString);
+    if (!d) return String(isoString);
+    return d.toLocaleDateString("id-ID", {
+      timeZone: TZ,
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
   } catch {
-    return isoString;
+    return String(isoString);
   }
 }
 
 /**
- * Relative time: "2 menit lalu", "1 jam lalu", dst.
+ * "2 menit lalu", "1 jam lalu", dst.
  */
 export function fmtRelative(isoString) {
   if (!isoString) return "-";
   try {
-    const diff = Date.now() - new Date(isoString).getTime();
+    const d = parseDate(isoString);
+    if (!d) return "-";
+    const diff = Date.now() - d.getTime();
     const mnt = Math.floor(diff / 60000);
     if (mnt < 1) return "Baru saja";
     if (mnt < 60) return `${mnt} menit lalu`;
     const jam = Math.floor(mnt / 60);
     if (jam < 24) return `${jam} jam lalu`;
-    const hari = Math.floor(jam / 24);
-    return `${hari} hari lalu`;
+    return `${Math.floor(jam / 24)} hari lalu`;
   } catch {
-    return isoString;
+    return "-";
   }
 }

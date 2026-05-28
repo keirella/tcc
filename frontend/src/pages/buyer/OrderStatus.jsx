@@ -1,25 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  USER,
-  STATUS_CONFIG,
-  STATUS_STEPS as STEPS,
-} from "../../data/DummyData";
+import { USER, STATUS_CONFIG, STATUS_STEPS as STEPS } from "../../data/DummyData";
 import { getOrders, getOrderById } from "../../services/api";
 import { fmtDateTime } from "../../utils/dateUtils";
 
 const COLORS = {
-  primary: "#ffffff",
-  secondary: "#D3968C",
-  accent: "#c07060",
-  bg_light: "#F7F4D5",
-  text_dark: "#105666",
-  white: "#ffffff",
+  primary: "#ffffff", secondary: "#D3968C", accent: "#c07060",
+  bg_light: "#F7F4D5", text_dark: "#105666", white: "#ffffff",
   overlay: "rgba(16,86,102,0.4)",
 };
 
 const fmt = (n) => "Rp " + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-const FALLBACK_IMG =
-  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80";
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80";
 const POLL_INTERVAL = 15000;
 
 // Status yang termasuk "aktif" (belum selesai/batal)
@@ -28,9 +19,9 @@ const ACTIVE_STATUSES = ["pending", "paid", "cooking"];
 // Urutan timeline yang ditampilkan
 const TIMELINE_STEPS = [
   { status: "pending", label: "Menunggu Konfirmasi" },
-  { status: "paid", label: "Pembayaran Diterima" },
+  { status: "paid",    label: "Pembayaran Diterima" },
   { status: "cooking", label: "Sedang Dimasak" },
-  { status: "ready", label: "Siap Diambil" },
+  { status: "ready",   label: "Siap Diambil" },
 ];
 
 function getStatusStep(status) {
@@ -40,12 +31,9 @@ function getStatusStep(status) {
 
 // Normalisasi item dari response GET /api/orders/:id
 function normalizeItems(items = [], menus = []) {
-  return items.map((item) => ({
+  return items.map(item => ({
     id: item.menu_id || item.id,
-    nama:
-      item.nama ||
-      menus.find((m) => m.id === item.menu_id)?.nama ||
-      `Menu #${item.menu_id}`,
+    nama: item.nama || menus.find(m => m.id === item.menu_id)?.nama || `Menu #${item.menu_id}`,
     stall_name: item.stall_name || `Stan #${item.stall_id}`,
     qty: item.qty,
     subtotal: item.subtotal,
@@ -172,14 +160,7 @@ const css = `
   }
 `;
 
-export default function OrderStatus({
-  cart,
-  onGoToHome,
-  onGoToCart,
-  onGoToHistory,
-  onLogout,
-  user,
-}) {
+export default function OrderStatus({ cart, onGoToHome, onGoToCart, onGoToHistory, onLogout, user }) {
   const [openCard, setOpenCard] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -192,43 +173,30 @@ export default function OrderStatus({
   const [itemsLoading, setItemsLoading] = useState({});
 
   const displayName = user?.name || USER.name;
-  const totalCartItems = Object.values(cart || {}).reduce(
-    (a, b) => a + b.qty,
-    0
-  );
+  const totalCartItems = Object.values(cart || {}).reduce((a, b) => a + b.qty, 0);
   const buyerId = user?.id;
 
-  const fetchOrders = useCallback(
-    async (silent = false) => {
-      try {
-        if (!silent) setLoading(true);
-        const data = await getOrders();
-        // Filter hanya order milik user ini
-        const mine = data.filter((o) =>
-          buyerId ? String(o.buyer_id) === String(buyerId) : true
-        );
-        // Hanya tampilkan yang aktif + ready (bukan cancelled)
-        const relevant = mine.filter((o) => o.status !== "cancelled");
-        setOrders(relevant);
-        setLastUpdated(
-          new Date().toLocaleTimeString("id-ID", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        );
-        setError(null);
-      } catch (err) {
-        setError(err.message || "Gagal memuat status pesanan.");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [buyerId]
-  );
+  const fetchOrders = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      const data = await getOrders();
+      // Filter hanya order milik user ini
+      const mine = data.filter(o =>
+        buyerId ? String(o.buyer_id) === String(buyerId) : true
+      );
+      // Hanya tampilkan yang aktif + ready (bukan cancelled)
+      const relevant = mine.filter(o => o.status !== "cancelled");
+      setOrders(relevant);
+      setLastUpdated(new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }));
+      setError(null);
+    } catch (err) {
+      setError(err.message || "Gagal memuat status pesanan.");
+    } finally {
+      setLoading(false);
+    }
+  }, [buyerId]);
 
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   // Buka kartu pertama otomatis
   useEffect(() => {
@@ -240,7 +208,7 @@ export default function OrderStatus({
 
   // Polling — hanya kalau ada order aktif
   useEffect(() => {
-    const hasActive = orders.some((o) => ACTIVE_STATUSES.includes(o.status));
+    const hasActive = orders.some(o => ACTIVE_STATUSES.includes(o.status));
     if (!hasActive) return;
     const timer = setInterval(() => fetchOrders(true), POLL_INTERVAL);
     return () => clearInterval(timer);
@@ -249,16 +217,16 @@ export default function OrderStatus({
   // Lazy-load detail items saat kartu dibuka
   const loadItemsForOrder = async (orderId) => {
     if (itemsCache[orderId] || itemsLoading[orderId]) return;
-    setItemsLoading((p) => ({ ...p, [orderId]: true }));
+    setItemsLoading(p => ({ ...p, [orderId]: true }));
     try {
       const detail = await getOrderById(orderId);
       const items = normalizeItems(detail.items || []);
-      setItemsCache((p) => ({ ...p, [orderId]: items }));
+      setItemsCache(p => ({ ...p, [orderId]: items }));
     } catch (err) {
       console.error("Gagal load detail order:", err.message);
-      setItemsCache((p) => ({ ...p, [orderId]: [] }));
+      setItemsCache(p => ({ ...p, [orderId]: [] }));
     } finally {
-      setItemsLoading((p) => ({ ...p, [orderId]: false }));
+      setItemsLoading(p => ({ ...p, [orderId]: false }));
     }
   };
 
@@ -272,27 +240,19 @@ export default function OrderStatus({
   };
 
   const getCfg = (status) =>
-    STATUS_CONFIG[status] || {
-      label: status,
-      bg: "rgba(16,86,102,0.1)",
-      color: COLORS.text_dark,
-      icon: "📦",
-      step: 0,
-    };
+    STATUS_CONFIG[status] || { label: status, bg: "rgba(16,86,102,0.1)", color: COLORS.text_dark, icon: "📦", step: 0 };
 
-  const activeOrders = orders.filter((o) => ACTIVE_STATUSES.includes(o.status));
-  const readyOrders = orders.filter((o) => o.status === "ready");
+  const activeOrders = orders.filter(o => ACTIVE_STATUSES.includes(o.status));
+  const readyOrders = orders.filter(o => o.status === "ready");
 
   // Ambil nama stan unik dari items cache
   const getStallNames = (orderId) => {
     const items = itemsCache[orderId] || [];
-    const names = [...new Set(items.map((i) => i.stall_name))];
+    const names = [...new Set(items.map(i => i.stall_name))];
     return names.length > 0 ? names.join(", ") : null;
   };
 
   const OrderCard = ({ order, isActive = false }) => {
-    console.log("created_at asli:", order.created_at);
-    console.log("parsed:", new Date(order.created_at));
     const cfg = getCfg(order.status);
     const isOpen = openCard === order.id;
     const currentStep = getStatusStep(order.status);
@@ -308,10 +268,7 @@ export default function OrderStatus({
             <div className="card-date">{fmtDateTime(order.created_at)}</div>
             {stallNames && <div className="card-stalls">🏪 {stallNames}</div>}
           </div>
-          <div
-            className="card-status-pill"
-            style={{ background: cfg.bg, color: cfg.color }}
-          >
+          <div className="card-status-pill" style={{ background: cfg.bg, color: cfg.color }}>
             <span>{cfg.icon}</span> {cfg.label}
           </div>
           <div className="card-total">{fmt(order.total)}</div>
@@ -326,28 +283,15 @@ export default function OrderStatus({
                 <div className="progress-steps">
                   {TIMELINE_STEPS.map((s) => {
                     const sStep = getStatusStep(s.status);
-                    const state =
-                      sStep < currentStep
-                        ? "done"
-                        : sStep === currentStep
-                        ? "current"
-                        : "upcoming";
+                    const state = sStep < currentStep ? "done" : sStep === currentStep ? "current" : "upcoming";
                     const sCfg = getCfg(s.status);
                     return (
-                      <div
-                        key={s.status}
-                        className={`step-wrap ${
-                          state !== "upcoming" ? "done" : ""
-                        }`}
-                      >
+                      <div key={s.status} className={`step-wrap ${state !== "upcoming" ? "done" : ""}`}>
                         <div className={`step-circle ${state}`}>
-                          {state === "done"
-                            ? "✓"
-                            : sCfg.icon || s.status[0].toUpperCase()}
+                          {state === "done" ? "✓" : sCfg.icon || s.status[0].toUpperCase()}
                         </div>
                         <div className={`step-label ${state}`}>
-                          {s.label.split(" ").slice(0, 1).join(" ")}
-                          <br />
+                          {s.label.split(" ").slice(0, 1).join(" ")}<br />
                           {s.label.split(" ").slice(1).join(" ")}
                         </div>
                       </div>
@@ -372,18 +316,14 @@ export default function OrderStatus({
                         src={item.foto_url || FALLBACK_IMG}
                         alt={item.nama}
                         className="item-mini-img"
-                        onError={(e) => {
-                          e.target.src = FALLBACK_IMG;
-                        }}
+                        onError={e => { e.target.src = FALLBACK_IMG; }}
                       />
                       <div>
                         <div className="item-mini-name">{item.nama}</div>
                         <div className="item-mini-stall">{item.stall_name}</div>
                         <div className="item-mini-qty">×{item.qty}</div>
                       </div>
-                      <div className="item-mini-price">
-                        {fmt(item.subtotal)}
-                      </div>
+                      <div className="item-mini-price">{fmt(item.subtotal)}</div>
                     </div>
                   ))
                 )}
@@ -401,9 +341,7 @@ export default function OrderStatus({
                       </div>
                       <div>
                         <div className="tl-label">Pesanan dibuat</div>
-                        <div className="tl-time">
-                          {fmtDateTime(order.created_at)}
-                        </div>
+                        <div className="tl-time">{fmtDateTime(order.created_at)}</div>
                       </div>
                     </div>
                     <div className="tl-item">
@@ -425,21 +363,13 @@ export default function OrderStatus({
                     return (
                       <div className="tl-item" key={s.status}>
                         <div className="tl-dot-wrap">
-                          <div
-                            className={`tl-dot ${
-                              isCurrent ? "current" : "done"
-                            }`}
-                          />
-                          {sStep < currentStep && (
-                            <div className="tl-line done" />
-                          )}
+                          <div className={`tl-dot ${isCurrent ? "current" : "done"}`} />
+                          {sStep < currentStep && <div className="tl-line done" />}
                         </div>
                         <div>
                           <div className="tl-label">{s.label}</div>
                           <div className="tl-time">
-                            {s.status === "pending"
-                              ? fmtDateTime(order.created_at)
-                              : "-"}
+                            {s.status === "pending" ? fmtDateTime(order.created_at) : "-"}
                           </div>
                         </div>
                       </div>
@@ -458,10 +388,7 @@ export default function OrderStatus({
     <>
       <style>{css}</style>
       <div className="os-app">
-        <div
-          className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`}
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} />
 
         <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
           <div className="sidebar-brand">
@@ -472,40 +399,18 @@ export default function OrderStatus({
             </div>
           </div>
           <nav className="sidebar-nav">
-            <button
-              className="nav-item"
-              onClick={() => {
-                onGoToHome();
-                setSidebarOpen(false);
-              }}
-            >
+            <button className="nav-item" onClick={() => { onGoToHome(); setSidebarOpen(false); }}>
               <span className="nav-item-icon">🏠</span> Menu
             </button>
-            <button
-              className="nav-item"
-              onClick={() => {
-                onGoToCart();
-                setSidebarOpen(false);
-              }}
-            >
+            <button className="nav-item" onClick={() => { onGoToCart(); setSidebarOpen(false); }}>
               <span className="nav-item-icon">🛒</span> Keranjang
-              {totalCartItems > 0 && (
-                <span className="nav-badge">{totalCartItems}</span>
-              )}
+              {totalCartItems > 0 && <span className="nav-badge">{totalCartItems}</span>}
             </button>
             <button className="nav-item active">
               <span className="nav-item-icon">📋</span> Status Pesanan
-              {activeOrders.length > 0 && (
-                <span className="nav-badge">{activeOrders.length}</span>
-              )}
+              {activeOrders.length > 0 && <span className="nav-badge">{activeOrders.length}</span>}
             </button>
-            <button
-              className="nav-item"
-              onClick={() => {
-                onGoToHistory();
-                setSidebarOpen(false);
-              }}
-            >
+            <button className="nav-item" onClick={() => { onGoToHistory(); setSidebarOpen(false); }}>
               <span className="nav-item-icon">🕐</span> Riwayat
             </button>
           </nav>
@@ -517,10 +422,7 @@ export default function OrderStatus({
                 <div className="user-email">{user?.email || USER.email}</div>
               </div>
             </div>
-            <button
-              className="logout-btn"
-              onClick={() => setShowLogoutModal(true)}
-            >
+            <button className="logout-btn" onClick={() => setShowLogoutModal(true)}>
               <span>🚪</span> Keluar
             </button>
           </div>
@@ -528,9 +430,7 @@ export default function OrderStatus({
 
         <div className="os-main">
           <div className="topbar">
-            <button className="hamburger" onClick={() => setSidebarOpen(true)}>
-              ☰
-            </button>
+            <button className="hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
             <span className="topbar-title">Status Pesanan</span>
           </div>
 
@@ -544,9 +444,7 @@ export default function OrderStatus({
                 <div className="empty-emo">📋</div>
                 <div className="empty-title">Belum Ada Pesanan</div>
                 <div className="empty-sub">Kamu belum punya pesanan aktif.</div>
-                <button className="empty-btn" onClick={onGoToHome}>
-                  Pesan Sekarang
-                </button>
+                <button className="empty-btn" onClick={onGoToHome}>Pesan Sekarang</button>
               </div>
             ) : (
               <>
@@ -554,12 +452,8 @@ export default function OrderStatus({
                   <div className="active-banner">
                     <span className="active-banner-icon">🍳</span>
                     <div>
-                      <div className="active-banner-title">
-                        {activeOrders.length} pesanan sedang diproses
-                      </div>
-                      <div className="active-banner-sub">
-                        Refresh otomatis tiap 15 detik
-                      </div>
+                      <div className="active-banner-title">{activeOrders.length} pesanan sedang diproses</div>
+                      <div className="active-banner-sub">Refresh otomatis tiap 15 detik</div>
                     </div>
                     <div className="active-banner-right">
                       <div className="active-badge">● Live</div>
@@ -567,26 +461,18 @@ export default function OrderStatus({
                   </div>
                 )}
                 {lastUpdated && (
-                  <div className="last-updated">
-                    Terakhir diperbarui pukul {lastUpdated}
-                  </div>
+                  <div className="last-updated">Terakhir diperbarui pukul {lastUpdated}</div>
                 )}
                 {activeOrders.length > 0 && (
                   <>
                     <div className="sec-title">⚡ Pesanan Aktif</div>
-                    {activeOrders.map((o) => (
-                      <OrderCard key={o.id} order={o} isActive />
-                    ))}
+                    {activeOrders.map(o => <OrderCard key={o.id} order={o} isActive />)}
                   </>
                 )}
                 {readyOrders.length > 0 && (
                   <>
-                    <div className="sec-title" style={{ marginTop: 28 }}>
-                      ✅ Siap Diambil
-                    </div>
-                    {readyOrders.map((o) => (
-                      <OrderCard key={o.id} order={o} />
-                    ))}
+                    <div className="sec-title" style={{ marginTop: 28 }}>✅ Siap Diambil</div>
+                    {readyOrders.map(o => <OrderCard key={o.id} order={o} />)}
                   </>
                 )}
               </>
@@ -595,32 +481,14 @@ export default function OrderStatus({
         </div>
 
         {showLogoutModal && (
-          <div
-            className="modal-overlay"
-            onClick={() => setShowLogoutModal(false)}
-          >
+          <div className="modal-overlay" onClick={() => setShowLogoutModal(false)}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-icon">🚪</div>
               <div className="modal-title">Keluar dari akun?</div>
-              <div className="modal-sub">
-                Kamu akan keluar dari Kantin Digital.
-              </div>
+              <div className="modal-sub">Kamu akan keluar dari Kantin Digital.</div>
               <div className="modal-btns">
-                <button
-                  className="modal-cancel"
-                  onClick={() => setShowLogoutModal(false)}
-                >
-                  Batal
-                </button>
-                <button
-                  className="modal-confirm"
-                  onClick={() => {
-                    setShowLogoutModal(false);
-                    onLogout();
-                  }}
-                >
-                  Ya, Keluar
-                </button>
+                <button className="modal-cancel" onClick={() => setShowLogoutModal(false)}>Batal</button>
+                <button className="modal-confirm" onClick={() => { setShowLogoutModal(false); onLogout(); }}>Ya, Keluar</button>
               </div>
             </div>
           </div>

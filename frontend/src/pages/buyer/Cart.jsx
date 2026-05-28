@@ -1,18 +1,15 @@
 import { useState } from "react";
 import { USER, getRekoMenus } from "../../data/DummyData";
-import { checkoutCart, getMenus } from "../../services/api";
+import { checkoutCart, processPayment } from "../../services/api";
 
 const COLORS = {
-  primary: "#ffffff",
-  secondary: "#D3968C",
-  accent: "#c07060",
-  bg_light: "#F7F4D5",
-  text_dark: "#105666",
-  white: "#ffffff",
+  primary: "#ffffff", secondary: "#D3968C", accent: "#c07060",
+  bg_light: "#F7F4D5", text_dark: "#105666", white: "#ffffff",
   overlay: "rgba(16,86,102,0.4)",
 };
 
 const fmt = (n) => "Rp " + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80";
 
 function groupByStall(cart) {
   const groups = {};
@@ -23,15 +20,11 @@ function groupByStall(cart) {
   return groups;
 }
 
-const FALLBACK_IMG = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80";
-
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Poppins', sans-serif; background: ${COLORS.bg_light}; }
   .cart-app { display: flex; min-height: 100vh; }
-
-  /* SIDEBAR */
   .sidebar { width: 240px; flex-shrink: 0; background: ${COLORS.primary}; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; transition: transform 0.3s; border-right: 1px solid rgba(211,150,140,0.15); }
   .sidebar-brand { padding: 24px 20px 20px; border-bottom: 1px solid rgba(211,150,140,0.1); display: flex; align-items: center; gap: 10px; }
   .sidebar-brand-icon { font-size: 28px; }
@@ -52,20 +45,14 @@ const css = `
   .logout-btn:hover { background: rgba(211,150,140,0.1); color: ${COLORS.secondary}; }
   .sidebar-overlay { display: none; position: fixed; inset: 0; background: ${COLORS.overlay}; z-index: 190; }
   .hamburger { display: none; background: none; border: none; font-size: 22px; cursor: pointer; color: ${COLORS.text_dark}; }
-
-  /* TOPBAR */
   .topbar { background: ${COLORS.white}; padding: 0 24px; height: 64px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(211,150,140,0.15); position: sticky; top: 0; z-index: 100; }
   .back-btn { background: ${COLORS.bg_light}; border: none; border-radius: 10px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; color: ${COLORS.text_dark}; transition: background 0.2s; flex-shrink: 0; }
   .back-btn:hover { background: rgba(211,150,140,0.15); }
   .topbar-title { font-size: 18px; font-weight: 700; color: ${COLORS.text_dark}; }
   .topbar-sub { font-size: 13px; color: ${COLORS.secondary}; font-weight: 500; }
-
-  /* MAIN */
   .cart-main { margin-left: 240px; flex: 1; min-width: 0; display: flex; flex-direction: column; }
   .cart-page { display: grid; grid-template-columns: 1fr 340px; gap: 24px; padding: 28px 32px 100px; align-items: start; }
   .col-title { font-size: 17px; font-weight: 700; color: ${COLORS.text_dark}; margin-bottom: 16px; }
-
-  /* ITEMS */
   .stall-group { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 2px 12px rgba(211,150,140,0.1); margin-bottom: 20px; }
   .stall-hdr { background: rgba(211,150,140,0.07); padding: 14px 20px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(211,150,140,0.12); }
   .stall-hdr-name { font-size: 15px; font-weight: 700; color: ${COLORS.text_dark}; }
@@ -90,11 +77,8 @@ const css = `
   .note-input { width: 100%; padding: 10px 13px; border: 1.5px solid rgba(211,150,140,0.25); border-radius: 10px; background: ${COLORS.bg_light}; font-size: 13px; color: ${COLORS.text_dark}; font-family: 'Poppins', sans-serif; resize: none; outline: none; transition: border 0.2s; }
   .note-input:focus { border-color: ${COLORS.secondary}; }
   .note-input::placeholder { color: rgba(16,86,102,0.3); }
-
-  /* ERROR BANNER */
-  .error-banner { background: rgba(239,68,68,0.1); border: 1.5px solid rgba(239,68,68,0.3); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #dc2626; font-weight: 500; display: flex; align-items: center; gap: 8px; }
-
-  /* REKOMENDASI */
+  .error-banner { background: rgba(239,68,68,0.1); border: 1.5px solid rgba(239,68,68,0.3); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #dc2626; font-weight: 500; }
+  .warn-banner { background: rgba(234,179,8,0.1); border: 1.5px solid rgba(234,179,8,0.35); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #a16207; font-weight: 500; }
   .reko-section { margin-top: 8px; }
   .reko-row { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
   .reko-row::-webkit-scrollbar { display: none; }
@@ -107,8 +91,6 @@ const css = `
   .reko-price { font-size: 12px; font-weight: 800; color: ${COLORS.text_dark}; margin-bottom: 8px; }
   .reko-add { width: 100%; padding: 6px; background: ${COLORS.secondary}; color: ${COLORS.bg_light}; border: none; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif; transition: opacity 0.2s; }
   .reko-add:hover { opacity: 0.85; }
-
-  /* SUMMARY */
   .summary-card { background: white; border-radius: 20px; padding: 22px; box-shadow: 0 2px 12px rgba(211,150,140,0.1); position: sticky; top: 88px; }
   .sum-title { font-size: 17px; font-weight: 700; color: ${COLORS.text_dark}; margin-bottom: 18px; }
   .sum-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
@@ -124,8 +106,6 @@ const css = `
   .pay-btn { width: 100%; margin-top: 18px; padding: 15px; background: ${COLORS.secondary}; color: ${COLORS.bg_light}; border: none; border-radius: 14px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif; box-shadow: 0 6px 20px rgba(211,150,140,0.35); transition: opacity 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .pay-btn:hover:not(:disabled) { opacity: 0.88; }
   .pay-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-
-  /* MODAL */
   .overlay { position: fixed; inset: 0; background: ${COLORS.overlay}; display: flex; align-items: center; justify-content: center; z-index: 300; backdrop-filter: blur(4px); padding: 20px; }
   .modal { background: ${COLORS.bg_light}; border-radius: 24px; padding: 32px; width: 100%; max-width: 460px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: popIn 0.25s ease; }
   @keyframes popIn { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -136,27 +116,24 @@ const css = `
   .modal-item:last-child { border-bottom: none; }
   .modal-item-name { font-weight: 500; }
   .modal-item-val { font-weight: 700; }
-  .modal-total { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-top: 2px solid rgba(211,150,140,0.2); margin-bottom: 22px; }
+  .modal-total { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-top: 2px solid rgba(211,150,140,0.2); margin-bottom: 16px; }
   .modal-total-lbl { font-size: 16px; font-weight: 700; color: ${COLORS.text_dark}; }
   .modal-total-val { font-size: 22px; font-weight: 800; color: ${COLORS.secondary}; }
+  .modal-error { background: rgba(239,68,68,0.1); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #dc2626; font-weight: 500; margin-bottom: 14px; }
+  .modal-warn { background: rgba(234,179,8,0.1); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #a16207; font-weight: 500; margin-bottom: 14px; }
   .modal-btns { display: flex; gap: 12px; }
-  .modal-cancel { flex: 1; padding: 14px; background: rgba(211,150,140,0.12); color: ${COLORS.text_dark}; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif; transition: background 0.2s; }
+  .modal-cancel { flex: 1; padding: 14px; background: rgba(211,150,140,0.12); color: ${COLORS.text_dark}; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Poppins', sans-serif; }
   .modal-cancel:hover:not(:disabled) { background: rgba(211,150,140,0.22); }
   .modal-cancel:disabled { opacity: 0.5; cursor: not-allowed; }
   .modal-confirm { flex: 2; padding: 14px; background: ${COLORS.secondary}; color: ${COLORS.bg_light}; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif; box-shadow: 0 4px 16px rgba(211,150,140,0.4); transition: opacity 0.2s; }
   .modal-confirm:hover:not(:disabled) { opacity: 0.88; }
   .modal-confirm:disabled { opacity: 0.55; cursor: not-allowed; }
-  .modal-error { background: rgba(239,68,68,0.1); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #dc2626; font-weight: 500; margin-bottom: 14px; }
-
-  /* EMPTY & SUCCESS */
   .empty-page { max-width: 500px; margin: 80px auto; padding: 0 24px; text-align: center; }
   .empty-emo { font-size: 64px; margin-bottom: 20px; }
   .empty-title { font-size: 22px; font-weight: 700; color: ${COLORS.text_dark}; margin-bottom: 8px; }
   .empty-sub { font-size: 15px; color: ${COLORS.secondary}; margin-bottom: 28px; line-height: 1.6; }
   .empty-btn { padding: 14px 36px; background: ${COLORS.secondary}; color: ${COLORS.bg_light}; border: none; border-radius: 14px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: 'Poppins', sans-serif; box-shadow: 0 6px 20px rgba(211,150,140,0.35); transition: opacity 0.2s; }
   .empty-btn:hover { opacity: 0.88; }
-
-  /* RESPONSIVE */
   @media (max-width: 900px) {
     .sidebar { transform: translateX(-100%); }
     .sidebar.open { transform: translateX(0); }
@@ -174,16 +151,7 @@ const css = `
   }
 `;
 
-export default function Cart({
-  cart,
-  setCart,
-  onBack,
-  onGoToHome,
-  onGoToStatus,
-  onGoToHistory,
-  onLogout,
-  user,
-}) {
+export default function Cart({ cart, setCart, onBack, onGoToHome, onGoToStatus, onGoToHistory, onLogout, user }) {
   const [notes, setNotes] = useState({});
   const [showModal, setShowModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -191,41 +159,45 @@ export default function Cart({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // order berhasil dibuat tapi payment gagal — tampilkan peringatan, bukan error keras
+  const [pendingOrderId, setPendingOrderId] = useState(null);
 
   const items = Object.values(cart);
   const groups = groupByStall(cart);
   const totalItems = items.reduce((a, b) => a + b.qty, 0);
   const subtotal = items.reduce((a, b) => a + b.harga * b.qty, 0);
   const stallCount = Object.keys(groups).length;
-
   const rekoMenus = getRekoMenus(cart);
-
   const displayName = user?.name || USER.name;
 
-  const addQty = (item) =>
-    setCart((p) => ({ ...p, [item.id]: { ...item, qty: item.qty + 1 } }));
-  const removeQty = (item) =>
-    setCart((p) => {
-      const n = { ...p };
-      if (n[item.id].qty > 1) n[item.id] = { ...n[item.id], qty: n[item.id].qty - 1 };
-      else delete n[item.id];
-      return n;
-    });
-  const deleteItem = (item) =>
-    setCart((p) => { const n = { ...p }; delete n[item.id]; return n; });
+  const addQty = (item) => setCart((p) => ({ ...p, [item.id]: { ...item, qty: item.qty + 1 } }));
+  const removeQty = (item) => setCart((p) => {
+    const n = { ...p };
+    if (n[item.id].qty > 1) n[item.id] = { ...n[item.id], qty: n[item.id].qty - 1 };
+    else delete n[item.id];
+    return n;
+  });
+  const deleteItem = (item) => setCart((p) => { const n = { ...p }; delete n[item.id]; return n; });
 
   const handleConfirm = async () => {
     setLoading(true);
     setError(null);
     try {
-      const buyerId = user?.id || null;
-      // checkoutCart = createOrder + processPayment sekaligus
-      await checkoutCart(cart, buyerId);
+      await checkoutCart(cart, user?.id);
       setShowModal(false);
       setOrdered(true);
       setCart({});
     } catch (err) {
-      setError(err.message || "Gagal memproses pesanan. Coba lagi.");
+      if (err.message === "ORDER_CREATED_PAYMENT_FAILED") {
+        // Order masuk tapi payment service gagal
+        // Status jadi 'pending' — admin/seller bisa konfirmasi manual
+        setPendingOrderId(err.orderId);
+        setShowModal(false);
+        setOrdered(true);
+        setCart({});
+      } else {
+        setError(err.message || "Gagal memproses pesanan. Coba lagi.");
+      }
     } finally {
       setLoading(false);
     }
@@ -233,10 +205,7 @@ export default function Cart({
 
   const SidebarNav = () => (
     <>
-      <div
-        className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`}
-        onClick={() => setSidebarOpen(false)}
-      />
+      <div className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} />
       <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-brand">
           <span className="sidebar-brand-icon">🍽️</span>
@@ -288,15 +257,15 @@ export default function Cart({
               <span className="topbar-title">Pesanan Berhasil!</span>
             </div>
             <div className="empty-page">
-              <div className="empty-emo">🎉</div>
-              <div className="empty-title">Pesanan Diterima!</div>
+              <div className="empty-emo">{pendingOrderId ? "⏳" : "🎉"}</div>
+              <div className="empty-title">{pendingOrderId ? "Pesanan Masuk!" : "Pesanan & Pembayaran Berhasil!"}</div>
               <div className="empty-sub">
-                Pesananmu sudah masuk ke sistem.<br />
-                Pantau statusnya di halaman Status Pesanan!
+                {pendingOrderId
+                  ? <>Pesananmu sudah masuk (#{pendingOrderId}) tapi pembayaran belum terkonfirmasi otomatis.<br />Pesanan akan segera diproses oleh admin. Pantau statusnya di halaman Status Pesanan.</>
+                  : <>Pesananmu sudah masuk dan pembayaran diterima.<br />Pantau statusnya di halaman Status Pesanan!</>
+                }
               </div>
-              <button className="empty-btn" onClick={onGoToStatus}>
-                Lihat Status Pesanan →
-              </button>
+              <button className="empty-btn" onClick={onGoToStatus}>Lihat Status Pesanan →</button>
             </div>
           </div>
         </div>
@@ -319,10 +288,7 @@ export default function Cart({
             <div className="empty-page">
               <div className="empty-emo">🛒</div>
               <div className="empty-title">Keranjang Kosong</div>
-              <div className="empty-sub">
-                Belum ada makanan yang dipilih.<br />
-                Yuk pilih dulu dari menu!
-              </div>
+              <div className="empty-sub">Belum ada makanan yang dipilih.<br />Yuk pilih dulu dari menu!</div>
               <button className="empty-btn" onClick={onBack}>← Kembali ke Menu</button>
             </div>
           </div>
@@ -347,14 +313,9 @@ export default function Cart({
           </div>
 
           <div className="cart-page">
-            {/* KIRI */}
             <div>
               <div className="col-title">Pesananmu</div>
-
-              {error && (
-                <div className="error-banner">⚠️ {error}</div>
-              )}
-
+              {error && <div className="error-banner">⚠️ {error}</div>}
               {Object.entries(groups).map(([stallName, stallItems]) => {
                 const stallSubtotal = stallItems.reduce((a, b) => a + b.harga * b.qty, 0);
                 return (
@@ -367,12 +328,7 @@ export default function Cart({
                     </div>
                     {stallItems.map((item) => (
                       <div className="item-row" key={item.id}>
-                        <img
-                          src={item.foto_url || FALLBACK_IMG}
-                          alt={item.nama}
-                          className="item-img"
-                          onError={e => { e.target.src = FALLBACK_IMG; }}
-                        />
+                        <img src={item.foto_url || FALLBACK_IMG} alt={item.nama} className="item-img" onError={e => { e.target.src = FALLBACK_IMG; }} />
                         <div className="item-info">
                           <div className="item-name">{item.nama}</div>
                           <div className="item-price-unit">{fmt(item.harga)} / porsi</div>
@@ -402,7 +358,6 @@ export default function Cart({
                 );
               })}
 
-              {/* REKOMENDASI */}
               {rekoMenus.length > 0 && (
                 <div className="reko-section">
                   <div style={{ fontSize: 16, fontWeight: 700, color: COLORS.text_dark, marginBottom: 14 }}>
@@ -411,25 +366,12 @@ export default function Cart({
                   <div className="reko-row">
                     {rekoMenus.map((m) => (
                       <div className="reko-card" key={m.id}>
-                        <img
-                          src={m.foto_url || FALLBACK_IMG}
-                          alt={m.nama}
-                          className="reko-img"
-                          onError={e => { e.target.src = FALLBACK_IMG; }}
-                        />
+                        <img src={m.foto_url || FALLBACK_IMG} alt={m.nama} className="reko-img" onError={e => { e.target.src = FALLBACK_IMG; }} />
                         <div className="reko-body">
                           <div className="reko-stall">{m.stall_name}</div>
                           <div className="reko-name">{m.nama}</div>
                           <div className="reko-price">{fmt(m.harga)}</div>
-                          <button
-                            className="reko-add"
-                            onClick={() =>
-                              setCart((p) => ({
-                                ...p,
-                                [m.id]: { ...m, stok: 10, qty: 1 },
-                              }))
-                            }
-                          >
+                          <button className="reko-add" onClick={() => setCart((p) => ({ ...p, [m.id]: { ...m, stok: 10, qty: 1 } }))}>
                             + Tambah
                           </button>
                         </div>
@@ -440,7 +382,6 @@ export default function Cart({
               )}
             </div>
 
-            {/* KANAN — SUMMARY */}
             <div>
               <div className="summary-card">
                 <div className="sum-title">Ringkasan Pembayaran</div>
@@ -478,7 +419,6 @@ export default function Cart({
           </div>
         </div>
 
-        {/* MODAL BAYAR */}
         {showModal && (
           <div className="overlay" onClick={() => !loading && setShowModal(false)}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -498,9 +438,7 @@ export default function Cart({
               </div>
               {error && <div className="modal-error">⚠️ {error}</div>}
               <div className="modal-btns">
-                <button className="modal-cancel" onClick={() => setShowModal(false)} disabled={loading}>
-                  Batal
-                </button>
+                <button className="modal-cancel" onClick={() => setShowModal(false)} disabled={loading}>Batal</button>
                 <button className="modal-confirm" onClick={handleConfirm} disabled={loading}>
                   {loading ? "⏳ Memproses..." : "✓ Konfirmasi & Bayar"}
                 </button>
@@ -509,7 +447,6 @@ export default function Cart({
           </div>
         )}
 
-        {/* MODAL LOGOUT */}
         {showLogoutModal && (
           <div className="overlay" onClick={() => setShowLogoutModal(false)}>
             <div className="modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: "center" }}>
@@ -518,9 +455,7 @@ export default function Cart({
               <div className="modal-sub">Keranjang yang belum di-checkout akan hilang.</div>
               <div className="modal-btns">
                 <button className="modal-cancel" onClick={() => setShowLogoutModal(false)}>Batal</button>
-                <button className="modal-confirm" onClick={() => { setShowLogoutModal(false); onLogout(); }}>
-                  Ya, Keluar
-                </button>
+                <button className="modal-confirm" onClick={() => { setShowLogoutModal(false); onLogout(); }}>Ya, Keluar</button>
               </div>
             </div>
           </div>
