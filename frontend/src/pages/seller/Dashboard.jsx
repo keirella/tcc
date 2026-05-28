@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  ALL_MENUS,
-  DUMMY_ORDERS,
-  SELLER_INFO,
-  STATUS_CONFIG,
-  STATUS_FLOW,
-} from "../../data/DummyData";
+  getSavedUser,
+  getStallById,
+  getOrders,
+  getMenus,
+  getStallEarnings,
+  logout,
+} from "../../services/api";
+import { STATUS_CONFIG, STATUS_FLOW } from "../../data/DummyData";
 
 const COLORS = {
   darkGreen: "#0A3323",
@@ -151,7 +153,7 @@ const navItems = [
   { icon: "📋", label: "Pesanan",   key: "orders" },
 ];
 
-function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = [], pendingCount = 0, onLogoutClick }) {
+function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = [], pendingCount = 0, onLogoutClick, user }) {
   return (
     <aside className="seller-sidebar">
       <div className="sb-logo">
@@ -179,7 +181,7 @@ function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = []
           <p className="sb-empty-section">Belum ada pesanan aktif</p>
         ) : liveOrders.slice(0, 3).map((o) => (
           <div key={o.id} className="sb-order-item">
-            <div className="sb-order-name">#{o.id} · {o.items[0]?.nama}{o.items.length > 1 ? ` +${o.items.length - 1}` : ""}</div>
+            <div className="sb-order-name">#{o.id} · {o.items?.[0]?.nama || "..."}{o.items?.length > 1 ? ` +${o.items.length - 1}` : ""}</div>
             <span className={`sb-order-status ${o.status}`}>
               {STATUS_CONFIG[o.status]?.icon} {STATUS_CONFIG[o.status]?.label}
             </span>
@@ -201,10 +203,10 @@ function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = []
         ))}
       </div>
       <div className="sb-user-card">
-        <div className="sb-avatar">{SELLER_INFO.name[0]}</div>
+        <div className="sb-avatar">{(user?.name || "S")[0]}</div>
         <div>
-          <p className="sb-user-name">{SELLER_INFO.name}</p>
-          <p className="sb-user-code">{SELLER_INFO.code}</p>
+          <p className="sb-user-name">{user?.name || "Seller"}</p>
+          <p className="sb-user-code">{user?.email || ""}</p>
         </div>
       </div>
       <button className="sb-logout" onClick={onLogoutClick}>🚪 Keluar</button>
@@ -258,59 +260,49 @@ const dashStyles = `
   .bar-wrap  { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
   .bar       { width: 100%; border-radius: 6px 6px 0 0; transition: height 0.6s cubic-bezier(0.34,1.56,0.64,1); }
   .bar-label { font-size: 10px; color: #aaa; font-weight: 500; }
+  .dash-loading { display: flex; align-items: center; justify-content: center; height: 100vh; font-size: 15px; color: ${COLORS.mossGreen}; font-family: 'Poppins', sans-serif; }
 `;
 
 function formatRupiah(v) { return "Rp " + Number(v).toLocaleString("id-ID"); }
 
-// ── Hitung stats dari DUMMY_ORDERS ────────────────────────────────
-function buildDashboardStats(orders) {
-  const totalPendapatan = orders
-    .filter((o) => o.status !== "cancelled")
-    .reduce((a, o) => a + o.total, 0);
+function buildDashboardStats(orders, menus, stall, earnings) {
   const totalPesanan = orders.length;
-  const menuAktif = ALL_MENUS.filter((m) => m.stall_id === SELLER_INFO.stall_id).length;
-  const stokRendah = ALL_MENUS.filter((m) => m.stall_id === SELLER_INFO.stall_id && m.stok < 5).length;
-
+  const menuAktif    = menus.length;
+  const stokRendah   = menus.filter((m) => m.stok < 5).length;
   return [
-    { label: "Total Pendapatan", value: formatRupiah(totalPendapatan), icon: "💰", change: "+12% minggu ini", variant: "green" },
-    { label: "Total Pesanan",    value: String(totalPesanan),          icon: "🛒", change: `${orders.filter(o => o.status !== "cancelled").length} aktif`, variant: "moss" },
-    { label: "Menu Aktif",       value: String(menuAktif),             icon: "🍽️", change: `${SELLER_INFO.stall}`, variant: "midnight" },
-    { label: "Stok Rendah",      value: String(stokRendah),            icon: "⚠️", change: stokRendah > 0 ? "Perlu restock" : "Semua aman", variant: "rosy" },
+    { label: "Total Pendapatan", value: formatRupiah(earnings),  icon: "💰", change: "dari pesanan selesai", variant: "green" },
+    { label: "Total Pesanan",    value: String(totalPesanan),     icon: "🛒", change: `${orders.filter(o => o.status !== "cancelled").length} aktif`, variant: "moss" },
+    { label: "Menu Aktif",       value: String(menuAktif),        icon: "🍽️", change: stall?.nama_stan || "-", variant: "midnight" },
+    { label: "Stok Rendah",      value: String(stokRendah),       icon: "⚠️", change: stokRendah > 0 ? "Perlu restock" : "Semua aman", variant: "rosy" },
   ];
 }
 
-// ── Top menus: hitung dari item di DUMMY_ORDERS ────────────────────
-function buildTopMenus(orders) {
+function buildTopMenus(orders, menus) {
   const soldMap = {};
   orders.forEach((o) => {
-    if (o.status === "cancelled") return;
+    if (o.status === "cancelled" || !o.items) return;
     o.items.forEach((item) => {
-      soldMap[item.nama] = (soldMap[item.nama] || 0) + item.qty;
+      const key = item.nama || String(item.menu_id);
+      soldMap[key] = (soldMap[key] || 0) + (item.qty || 1);
     });
   });
   return Object.entries(soldMap)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([nama, sold]) => {
-      const menu = ALL_MENUS.find((m) => m.nama === nama);
-      return {
-        name: nama,
-        sold,
-        price: menu ? formatRupiah(menu.harga) : "-",
-        foto_url: menu?.foto_url || "",
-      };
+      const menu = menus.find((m) => m.nama === nama);
+      return { name: nama, sold, price: menu ? formatRupiah(menu.harga) : "-", foto_url: menu?.foto_url || "" };
     });
 }
 
-// ── Notifikasi seller dari DUMMY_ORDERS ───────────────────────────
 function buildSellerNotifs(orders) {
   return orders
     .filter((o) => o.status === "pending" || o.status === "cooking")
     .map((o) => ({
       text: o.status === "pending"
-        ? `Pesanan #${o.id} masuk dari ${o.buyer}`
+        ? `Pesanan #${o.id} masuk`
         : `Pesanan #${o.id} sedang dimasak`,
-      time: o.created_at.split(" ")[1],
+      time: o.created_at ? String(o.created_at).split("T")[1]?.slice(0, 5) || "" : "",
       isNew: o.status === "pending",
     }));
 }
@@ -322,21 +314,55 @@ const weekData = [
 ];
 
 export default function Dashboard({ onNavigate }) {
-  const [activeNav, setActiveNav] = useState("dashboard");
+  const [activeNav, setActiveNav]           = useState("dashboard");
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const maxVal = Math.max(...weekData.map((d) => d.val));
+  const [orders, setOrders]                 = useState([]);
+  const [menus, setMenus]                   = useState([]);
+  const [stall, setStall]                   = useState(null);
+  const [earnings, setEarnings]             = useState(0);
+  const [loading, setLoading]               = useState(true);
+
+  const user    = getSavedUser();
+  const stallId = user?.stall_id || 1;
+  const maxVal  = Math.max(...weekData.map((d) => d.val));
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        const [allOrders, allMenus, stallData, earningData] = await Promise.all([
+          getOrders(),
+          getMenus(),
+          getStallById(stallId),
+          getStallEarnings(stallId),
+        ]);
+        setOrders(allOrders);
+        setMenus(allMenus.filter((m) => m.stall_id === stallId));
+        setStall(stallData);
+        setEarnings(earningData.total_earnings || 0);
+      } catch (err) {
+        console.error("Gagal load data dashboard:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [stallId]);
 
   const handleNav = (key) => {
     setActiveNav(key);
+    if (key === "logout") { logout(); }
     if (onNavigate) onNavigate(key);
   };
 
-  const liveOrders     = DUMMY_ORDERS.filter((o) => o.status === "pending" || o.status === "cooking" || o.status === "paid");
-  const pendingCount   = DUMMY_ORDERS.filter((o) => o.status === "pending").length;
-  const notifications  = buildSellerNotifs(DUMMY_ORDERS);
-  const stats          = buildDashboardStats(DUMMY_ORDERS);
-  const topMenus       = buildTopMenus(DUMMY_ORDERS);
-  const recentOrders   = [...DUMMY_ORDERS].sort((a, b) => b.id - a.id).slice(0, 3);
+  const liveOrders   = orders.filter((o) => ["pending", "paid", "cooking"].includes(o.status));
+  const pendingCount = orders.filter((o) => o.status === "pending").length;
+  const notifications = buildSellerNotifs(orders);
+  const stats         = buildDashboardStats(orders, menus, stall, earnings);
+  const topMenus      = buildTopMenus(orders, menus);
+  const recentOrders  = [...orders].sort((a, b) => b.id - a.id).slice(0, 3);
+
+  if (loading) return <div className="dash-loading"><style>{sidebarStyles + dashStyles}</style>Memuat dashboard...</div>;
 
   return (
     <div className="dash-root">
@@ -349,13 +375,14 @@ export default function Dashboard({ onNavigate }) {
         notifications={notifications}
         pendingCount={pendingCount}
         onLogoutClick={() => setShowLogoutModal(true)}
+        user={user}
       />
 
       <main className="dash-main">
         <div className="dash-header">
           <div>
             <h1>Selamat Datang 👋</h1>
-            <p>{SELLER_INFO.stall} · {SELLER_INFO.code}</p>
+            <p>{stall?.nama_stan || "Stan"} · {user?.email || ""}</p>
           </div>
           <div className="dash-date-pill">
             {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
@@ -382,8 +409,8 @@ export default function Dashboard({ onNavigate }) {
             {recentOrders.map((o) => (
               <div key={o.id} className="order-row">
                 <div>
-                  <div className="order-id">#{String(o.id).padStart(3,"0")} · {o.items.map(i => `${i.nama} ×${i.qty}`).join(", ")}</div>
-                  <div className="order-name">{o.buyer}</div>
+                  <div className="order-id">#{String(o.id).padStart(3, "0")} · {o.items?.map(i => `${i.nama} ×${i.qty}`).join(", ") || "-"}</div>
+                  <div className="order-name">{o.buyer_id || "Pembeli"}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div className="order-amount">{formatRupiah(o.total)}</div>
@@ -405,9 +432,7 @@ export default function Dashboard({ onNavigate }) {
             ) : topMenus.map((m) => (
               <div key={m.name} className="menu-row">
                 <div className="menu-img">
-                  {m.foto_url
-                    ? <img src={m.foto_url} alt={m.name} />
-                    : "🍴"}
+                  {m.foto_url ? <img src={m.foto_url} alt={m.name} /> : "🍴"}
                 </div>
                 <div className="menu-details">
                   <h4>{m.name}</h4>

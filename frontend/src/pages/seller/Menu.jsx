@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  ALL_MENUS,
-  DUMMY_ORDERS,
-  SELLER_INFO,
-  STATUS_CONFIG,
-} from "../../data/DummyData";
+  getSavedUser,
+  getOrders,
+  getMenus,
+  addMenu,
+  updateMenu,
+  deleteMenu,
+  logout,
+} from "../../services/api";
+import { STATUS_CONFIG } from "../../data/DummyData";
 
 const COLORS = {
   darkGreen: "#0A3323",
@@ -153,15 +157,13 @@ function buildSellerNotifs(orders) {
   return orders
     .filter((o) => o.status === "pending" || o.status === "cooking")
     .map((o) => ({
-      text: o.status === "pending"
-        ? `Pesanan #${o.id} masuk dari ${o.buyer}`
-        : `Pesanan #${o.id} sedang dimasak`,
-      time: o.created_at.split(" ")[1],
+      text: o.status === "pending" ? `Pesanan #${o.id} masuk` : `Pesanan #${o.id} sedang dimasak`,
+      time: o.created_at ? String(o.created_at).split("T")[1]?.slice(0, 5) || "" : "",
       isNew: o.status === "pending",
     }));
 }
 
-function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = [], pendingCount = 0, onLogoutClick }) {
+function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = [], pendingCount = 0, onLogoutClick, user }) {
   return (
     <aside className="seller-sidebar">
       <div className="sb-logo">
@@ -189,7 +191,7 @@ function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = []
           <p className="sb-empty-section">Belum ada pesanan aktif</p>
         ) : liveOrders.slice(0, 3).map((o) => (
           <div key={o.id} className="sb-order-item">
-            <div className="sb-order-name">#{o.id} · {o.items[0]?.nama}{o.items.length > 1 ? ` +${o.items.length - 1}` : ""}</div>
+            <div className="sb-order-name">#{o.id} · {o.items?.[0]?.nama || "..."}{o.items?.length > 1 ? ` +${o.items.length - 1}` : ""}</div>
             <span className={`sb-order-status ${o.status}`}>
               {STATUS_CONFIG[o.status]?.icon} {STATUS_CONFIG[o.status]?.label}
             </span>
@@ -211,10 +213,10 @@ function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = []
         ))}
       </div>
       <div className="sb-user-card">
-        <div className="sb-avatar">{SELLER_INFO.name[0]}</div>
+        <div className="sb-avatar">{(user?.name || "S")[0]}</div>
         <div>
-          <p className="sb-user-name">{SELLER_INFO.name}</p>
-          <p className="sb-user-code">{SELLER_INFO.code}</p>
+          <p className="sb-user-name">{user?.name || "Seller"}</p>
+          <p className="sb-user-code">{user?.email || ""}</p>
         </div>
       </div>
       <button className="sb-logout" onClick={onLogoutClick}>🚪 Keluar</button>
@@ -297,6 +299,7 @@ const menuStyles = `
   .cancel-btn:hover { border-color: ${COLORS.rosyBrown}; color: ${COLORS.rosyBrown}; }
   .save-btn { padding: 11px 28px; border-radius: 10px; border: none; background: ${COLORS.darkGreen}; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 700; color: ${COLORS.beige}; cursor: pointer; transition: all 0.2s; }
   .save-btn:hover { background: ${COLORS.midnightGreen}; }
+  .save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
   .empty-state { text-align: center; padding: 60px 20px; color: #bbb; grid-column: 1/-1; }
   .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
   .empty-state h3 { font-size: 16px; font-weight: 600; margin: 0 0 8px; color: ${COLORS.darkGreen}; }
@@ -306,8 +309,6 @@ const menuStyles = `
   .foto-preview .no-img { font-size: 32px; color: #ccc; }
 `;
 
-const SELLER_STALL_ID = SELLER_INFO.stall_id;
-
 function getStockStatus(stok) {
   if (stok === 0) return { label: "Habis",       cls: "out" };
   if (stok < 5)  return { label: "Hampir Habis", cls: "low" };
@@ -316,23 +317,40 @@ function getStockStatus(stok) {
 function formatRupiah(val) { return "Rp " + Number(val).toLocaleString("id-ID"); }
 
 export default function Menu({ onNavigate }) {
-  const [menus, setMenus]           = useState(
-    ALL_MENUS.filter((m) => m.stall_id === SELLER_STALL_ID)
-  );
-  const [search, setSearch]         = useState("");
-  const [filter, setFilter]         = useState("all");
-  const [showModal, setShowModal]   = useState(false);
+  const [menus, setMenus]                   = useState([]);
+  const [orders, setOrders]                 = useState([]);
+  const [search, setSearch]                 = useState("");
+  const [filter, setFilter]                 = useState("all");
+  const [showModal, setShowModal]           = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [editing, setEditing]       = useState(null);
-  const [form, setForm]             = useState({ nama: "", harga: "", stok: "", foto_url: "" });
-  const [activeNav, setActiveNav]   = useState("menu");
+  const [editing, setEditing]               = useState(null);
+  const [form, setForm]                     = useState({ nama: "", harga: "", stok: "", foto_url: "" });
+  const [activeNav, setActiveNav]           = useState("menu");
+  const [saving, setSaving]                 = useState(false);
 
-  const liveOrders    = DUMMY_ORDERS.filter((o) => o.status === "pending" || o.status === "cooking" || o.status === "paid");
-  const pendingCount  = DUMMY_ORDERS.filter((o) => o.status === "pending").length;
-  const notifications = buildSellerNotifs(DUMMY_ORDERS);
+  const user    = getSavedUser();
+  const stallId = user?.stall_id || 1;
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [allMenus, allOrders] = await Promise.all([getMenus(), getOrders()]);
+        setMenus(allMenus.filter((m) => m.stall_id === stallId));
+        setOrders(allOrders);
+      } catch (err) {
+        console.error("Gagal load data menu:", err);
+      }
+    }
+    loadData();
+  }, [stallId]);
+
+  const liveOrders   = orders.filter((o) => ["pending", "paid", "cooking"].includes(o.status));
+  const pendingCount = orders.filter((o) => o.status === "pending").length;
+  const notifications = buildSellerNotifs(orders);
 
   const handleNav = (key) => {
     setActiveNav(key);
+    if (key === "logout") { logout(); }
     if (onNavigate) onNavigate(key);
   };
 
@@ -343,20 +361,36 @@ export default function Menu({ onNavigate }) {
   });
 
   const openAdd  = () => { setEditing(null); setForm({ nama: "", harga: "", stok: "", foto_url: "" }); setShowModal(true); };
-  const openEdit = (m) => { setEditing(m.id); setForm({ nama: m.nama, harga: m.harga, stok: m.stok, foto_url: m.foto_url }); setShowModal(true); };
+  const openEdit = (m) => { setEditing(m.id); setForm({ nama: m.nama, harga: m.harga, stok: m.stok, foto_url: m.foto_url || "" }); setShowModal(true); };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.nama || !form.harga) return;
-    if (editing) {
-      setMenus((prev) => prev.map((m) => m.id === editing ? { ...m, ...form, harga: +form.harga, stok: +form.stok } : m));
-    } else {
-      setMenus((prev) => [...prev, { id: Date.now(), stall_id: SELLER_STALL_ID, stall_name: SELLER_INFO.stall, ...form, harga: +form.harga, stok: +form.stok }]);
+    setSaving(true);
+    try {
+      const payload = { ...form, harga: +form.harga, stok: +form.stok, stall_id: stallId };
+      if (editing) {
+        await updateMenu(editing, payload);
+        setMenus((prev) => prev.map((m) => m.id === editing ? { ...m, ...payload } : m));
+      } else {
+        const res = await addMenu(payload);
+        setMenus((prev) => [...prev, { id: res.id || Date.now(), stall_id: stallId, ...payload }]);
+      }
+      setShowModal(false);
+    } catch (err) {
+      alert("Gagal menyimpan menu: " + err.message);
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Hapus menu ini?")) setMenus((prev) => prev.filter((m) => m.id !== id));
+  const handleDelete = async (id) => {
+    if (!window.confirm("Hapus menu ini?")) return;
+    try {
+      await deleteMenu(id);
+      setMenus((prev) => prev.filter((m) => m.id !== id));
+    } catch (err) {
+      alert("Gagal menghapus menu: " + err.message);
+    }
   };
 
   return (
@@ -370,13 +404,14 @@ export default function Menu({ onNavigate }) {
         notifications={notifications}
         pendingCount={pendingCount}
         onLogoutClick={() => setShowLogoutModal(true)}
+        user={user}
       />
 
       <main className="menu-main">
         <div className="menu-header">
           <div>
             <h1>Kelola Menu 🍽️</h1>
-            <p>{SELLER_INFO.stall} · {menus.length} menu tersedia</p>
+            <p>{user?.name || "Seller"} · {menus.length} menu tersedia</p>
           </div>
           <button className="add-btn" onClick={openAdd}>＋ Tambah Menu</button>
         </div>
@@ -416,7 +451,7 @@ export default function Menu({ onNavigate }) {
                 </div>
                 <div className="menu-card-body">
                   <div className="menu-card-name">{m.nama}</div>
-                  <div className="menu-card-meta">{m.stall_name || SELLER_INFO.stall}</div>
+                  <div className="menu-card-meta">{m.stall_name || user?.name || "Stan"}</div>
                   <div className="stock-row">
                     <span className="stock-label">Stok</span>
                     <div className="stock-bar-bg">
@@ -465,7 +500,7 @@ export default function Menu({ onNavigate }) {
             </div>
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setShowModal(false)}>Batal</button>
-              <button className="save-btn" onClick={handleSave}>{editing ? "Simpan Perubahan" : "Tambah Menu"}</button>
+              <button className="save-btn" onClick={handleSave} disabled={saving}>{saving ? "Menyimpan..." : editing ? "Simpan Perubahan" : "Tambah Menu"}</button>
             </div>
           </div>
         </div>

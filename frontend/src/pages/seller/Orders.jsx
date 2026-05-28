@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  DUMMY_ORDERS,
-  SELLER_INFO,
-  STATUS_CONFIG,
-  STATUS_FLOW,
-} from "../../data/DummyData";
+  getSavedUser,
+  getOrders,
+  getOrderById,
+  updateOrderStatus,
+  deleteOrder,
+  logout,
+} from "../../services/api";
+import { STATUS_CONFIG, STATUS_FLOW } from "../../data/DummyData";
 
 const COLORS = {
   darkGreen: "#0A3323",
@@ -153,15 +156,13 @@ function buildSellerNotifs(orders) {
   return orders
     .filter((o) => o.status === "pending" || o.status === "cooking")
     .map((o) => ({
-      text: o.status === "pending"
-        ? `Pesanan #${o.id} masuk dari ${o.buyer}`
-        : `Pesanan #${o.id} sedang dimasak`,
-      time: o.created_at.split(" ")[1],
+      text: o.status === "pending" ? `Pesanan #${o.id} masuk` : `Pesanan #${o.id} sedang dimasak`,
+      time: o.created_at ? String(o.created_at).split("T")[1]?.slice(0, 5) || "" : "",
       isNew: o.status === "pending",
     }));
 }
 
-function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = [], pendingCount = 0, onLogoutClick }) {
+function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = [], pendingCount = 0, onLogoutClick, user }) {
   return (
     <aside className="seller-sidebar">
       <div className="sb-logo">
@@ -189,7 +190,7 @@ function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = []
           <p className="sb-empty-section">Belum ada pesanan aktif</p>
         ) : liveOrders.slice(0, 3).map((o) => (
           <div key={o.id} className="sb-order-item">
-            <div className="sb-order-name">#{o.id} · {o.items[0]?.nama}{o.items.length > 1 ? ` +${o.items.length - 1}` : ""}</div>
+            <div className="sb-order-name">#{o.id} · {o.items?.[0]?.nama || "..."}{o.items?.length > 1 ? ` +${o.items.length - 1}` : ""}</div>
             <span className={`sb-order-status ${o.status}`}>
               {STATUS_CONFIG[o.status]?.icon} {STATUS_CONFIG[o.status]?.label}
             </span>
@@ -211,10 +212,10 @@ function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = []
         ))}
       </div>
       <div className="sb-user-card">
-        <div className="sb-avatar">{SELLER_INFO.name[0]}</div>
+        <div className="sb-avatar">{(user?.name || "S")[0]}</div>
         <div>
-          <p className="sb-user-name">{SELLER_INFO.name}</p>
-          <p className="sb-user-code">{SELLER_INFO.code}</p>
+          <p className="sb-user-name">{user?.name || "Seller"}</p>
+          <p className="sb-user-code">{user?.email || ""}</p>
         </div>
       </div>
       <button className="sb-logout" onClick={onLogoutClick}>🚪 Keluar</button>
@@ -269,6 +270,7 @@ const ordersStyles = `
   .action-btn { padding: 7px 14px; border-radius: 8px; border: none; font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
   .action-btn.advance  { background: rgba(16,86,102,0.12); color: ${COLORS.midnightGreen}; }
   .action-btn.advance:hover { background: ${COLORS.midnightGreen}; color: white; }
+  .action-btn.advance:disabled { opacity: 0.5; cursor: not-allowed; }
   .action-btn.view { background: rgba(10,51,35,0.07); color: ${COLORS.darkGreen}; }
   .action-btn.view:hover { background: rgba(10,51,35,0.15); }
   .empty-state { text-align: center; padding: 60px 20px; color: #bbb; }
@@ -308,7 +310,6 @@ const ordersStyles = `
   .drawer-action-btn.secondary:hover { background: ${COLORS.rosyBrown}; color: white; }
 `;
 
-// Label tombol advance per status
 const ADVANCE_LABEL = {
   pending: "✅ Konfirmasi Bayar",
   paid:    "🍳 Mulai Masak",
@@ -318,29 +319,45 @@ const ADVANCE_LABEL = {
 function formatRupiah(v) { return "Rp " + Number(v).toLocaleString("id-ID"); }
 
 const STAT_CONFIGS = [
-  { key: "all",       label: "Total Pesanan",  icon: "📋", bg: "#0A332315", color: COLORS.darkGreen },
-  { key: "pending",   label: "Menunggu",       icon: "⏳", bg: "#f59e0b20", color: "#f59e0b" },
-  { key: "paid",      label: "Konfirmasi",     icon: "✅", bg: "#3b82f620", color: "#3b82f6" },
-  { key: "cooking",   label: "Dimasak",        icon: "🍳", bg: "#D3968C20", color: COLORS.rosyBrown },
-  { key: "ready",     label: "Siap Ambil",     icon: "🎉", bg: "#10b98120", color: "#10b981" },
+  { key: "all",     label: "Total Pesanan", icon: "📋", bg: "#0A332315", color: COLORS.darkGreen },
+  { key: "pending", label: "Menunggu",      icon: "⏳", bg: "#f59e0b20", color: "#f59e0b" },
+  { key: "paid",    label: "Konfirmasi",    icon: "✅", bg: "#3b82f620", color: "#3b82f6" },
+  { key: "cooking", label: "Dimasak",       icon: "🍳", bg: "#D3968C20", color: COLORS.rosyBrown },
+  { key: "ready",   label: "Siap Ambil",    icon: "🎉", bg: "#10b98120", color: "#10b981" },
 ];
 
-const TAB_LIST = ["all", "pending", "paid", "cooking", "ready", "cancelled"];
+const TAB_LIST  = ["all", "pending", "paid", "cooking", "ready", "cancelled"];
 const TAB_LABEL = {
   all: "Semua", pending: "⏳ Menunggu", paid: "✅ Konfirmasi",
   cooking: "🍳 Dimasak", ready: "🎉 Siap", cancelled: "❌ Batal",
 };
 
 export default function Orders({ onNavigate }) {
-  const [orders, setOrders]       = useState(DUMMY_ORDERS);
-  const [tab, setTab]             = useState("all");
-  const [search, setSearch]       = useState("");
-  const [selected, setSelected]   = useState(null);
-  const [activeNav, setActiveNav] = useState("orders");
+  const [orders, setOrders]           = useState([]);
+  const [tab, setTab]                 = useState("all");
+  const [search, setSearch]           = useState("");
+  const [selected, setSelected]       = useState(null);
+  const [activeNav, setActiveNav]     = useState("orders");
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  const user = getSavedUser();
+
+  useEffect(() => {
+    async function loadOrders() {
+      try {
+        const data = await getOrders();
+        setOrders(data);
+      } catch (err) {
+        console.error("Gagal load orders:", err);
+      }
+    }
+    loadOrders();
+  }, []);
 
   const handleNav = (key) => {
     setActiveNav(key);
+    if (key === "logout") { logout(); }
     if (onNavigate) onNavigate(key);
   };
 
@@ -359,25 +376,46 @@ export default function Orders({ onNavigate }) {
   const filtered = orders.filter((o) => {
     const matchTab    = tab === "all" || o.status === tab;
     const matchSearch = search === "" ||
-      o.buyer.toLowerCase().includes(search.toLowerCase()) ||
+      String(o.buyer_id).toLowerCase().includes(search.toLowerCase()) ||
       String(o.id).includes(search);
     return matchTab && matchSearch;
   });
 
-  const advanceStatus = (id) => {
-    setOrders((prev) => prev.map((o) =>
-      o.id === id && STATUS_FLOW[o.status]
-        ? { ...o, status: STATUS_FLOW[o.status] }
-        : o
-    ));
-    if (selected?.id === id) {
-      setSelected((prev) => ({ ...prev, status: STATUS_FLOW[prev.status] || prev.status }));
+  // Klik Detail → load items dari API
+  const handleDetail = async (o) => {
+    setLoadingDetail(true);
+    setSelected(o);
+    try {
+      const detail = await getOrderById(o.id);
+      setSelected(detail);
+    } catch (err) {
+      console.error("Gagal load detail:", err);
+    } finally {
+      setLoadingDetail(false);
     }
   };
 
-  const cancelOrder = (id) => {
-    setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status: "cancelled" } : o));
-    if (selected?.id === id) setSelected((prev) => ({ ...prev, status: "cancelled" }));
+  const advanceStatus = async (id) => {
+    const order = orders.find((o) => o.id === id);
+    if (!order || !STATUS_FLOW[order.status]) return;
+    const nextStatus = STATUS_FLOW[order.status];
+    try {
+      await updateOrderStatus(id, nextStatus);
+      setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status: nextStatus } : o));
+      if (selected?.id === id) setSelected((prev) => ({ ...prev, status: nextStatus }));
+    } catch (err) {
+      alert("Gagal update status: " + err.message);
+    }
+  };
+
+  const cancelOrder = async (id) => {
+    try {
+      await updateOrderStatus(id, "cancelled");
+      setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status: "cancelled" } : o));
+      if (selected?.id === id) setSelected((prev) => ({ ...prev, status: "cancelled" }));
+    } catch (err) {
+      alert("Gagal membatalkan pesanan: " + err.message);
+    }
   };
 
   return (
@@ -391,13 +429,14 @@ export default function Orders({ onNavigate }) {
         notifications={notifications}
         pendingCount={pendingCount}
         onLogoutClick={() => setShowLogoutModal(true)}
+        user={user}
       />
 
       <main className="orders-main">
         <div className="orders-header">
           <div>
             <h1>Pesanan Masuk 📋</h1>
-            <p>{SELLER_INFO.stall} · {orders.length} total pesanan</p>
+            <p>{user?.name || "Seller"} · {orders.length} total pesanan</p>
           </div>
           <button className="export-btn">📤 Export</button>
         </div>
@@ -417,7 +456,7 @@ export default function Orders({ onNavigate }) {
         <div className="filter-toolbar">
           <input
             className="search-input"
-            placeholder="🔍 Cari pembeli atau ID..."
+            placeholder="🔍 Cari ID pesanan..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -436,13 +475,13 @@ export default function Orders({ onNavigate }) {
           <table>
             <thead>
               <tr>
-                <th>ID</th><th>Pembeli</th><th>Menu</th>
-                <th>Total</th><th>Tanggal</th><th>Status</th><th>Aksi</th>
+                <th>ID</th><th>Buyer ID</th><th>Total</th>
+                <th>Tanggal</th><th>Status</th><th>Aksi</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={7}>
+                <tr><td colSpan={6}>
                   <div className="empty-state">
                     <div className="emoji">📭</div>
                     <h3>Tidak ada pesanan</h3>
@@ -453,16 +492,11 @@ export default function Orders({ onNavigate }) {
                 <tr key={o.id}>
                   <td className="order-id-cell">#{String(o.id).padStart(3, "0")}</td>
                   <td>
-                    <div className="buyer-name">{o.buyer}</div>
-                    <div className="buyer-sub">{o.buyerEmail}</div>
-                  </td>
-                  <td className="items-cell">
-                    {o.items.map((item, i) => (
-                      <span key={i} className="item-tag">{item.nama} ×{item.qty}</span>
-                    ))}
+                    <div className="buyer-name">#{o.buyer_id}</div>
+                    <div className="buyer-sub">{o.created_at ? new Date(o.created_at).toLocaleDateString("id-ID") : "-"}</div>
                   </td>
                   <td className="amount-cell">{formatRupiah(o.total)}</td>
-                  <td className="date-cell">{o.created_at}</td>
+                  <td className="date-cell">{o.created_at ? new Date(o.created_at).toLocaleString("id-ID") : "-"}</td>
                   <td>
                     <span className={`status-badge ${o.status}`}>
                       {STATUS_CONFIG[o.status]?.icon} {STATUS_CONFIG[o.status]?.label}
@@ -470,7 +504,7 @@ export default function Orders({ onNavigate }) {
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: "6px" }}>
-                      <button className="action-btn view" onClick={() => setSelected(o)}>Detail</button>
+                      <button className="action-btn view" onClick={() => handleDetail(o)}>Detail</button>
                       {STATUS_FLOW[o.status] && (
                         <button className="action-btn advance" onClick={() => advanceStatus(o.id)}>
                           {ADVANCE_LABEL[o.status]}
@@ -503,34 +537,31 @@ export default function Orders({ onNavigate }) {
               <button className="close-btn" onClick={() => setSelected(null)}>×</button>
             </div>
             <div className="drawer-section">
-              <div className="drawer-section-title">Informasi Pembeli</div>
-              <div className="drawer-info-row"><span className="drawer-info-label">Nama</span><span className="drawer-info-value">{selected.buyer}</span></div>
-              <div className="drawer-info-row"><span className="drawer-info-label">Email</span><span className="drawer-info-value">{selected.buyerEmail}</span></div>
-              <div className="drawer-info-row"><span className="drawer-info-label">Tanggal</span><span className="drawer-info-value">{selected.created_at}</span></div>
+              <div className="drawer-section-title">Informasi Pesanan</div>
+              <div className="drawer-info-row"><span className="drawer-info-label">ID Pembeli</span><span className="drawer-info-value">#{selected.buyer_id}</span></div>
+              <div className="drawer-info-row"><span className="drawer-info-label">Tanggal</span><span className="drawer-info-value">{selected.created_at ? new Date(selected.created_at).toLocaleString("id-ID") : "-"}</span></div>
               <div className="drawer-info-row">
                 <span className="drawer-info-label">Status</span>
                 <span className={`status-badge ${selected.status}`}>
                   {STATUS_CONFIG[selected.status]?.icon} {STATUS_CONFIG[selected.status]?.label}
                 </span>
               </div>
-              <div className="drawer-info-row">
-                <span className="drawer-info-label">Pembayaran</span>
-                <span className={`status-badge ${selected.payment === "paid" ? "paid" : "pending"}`}>
-                  {selected.payment === "paid" ? "✅ Lunas" : "⏳ Belum Bayar"}
-                </span>
-              </div>
             </div>
             <div className="drawer-section">
               <div className="drawer-section-title">Item Pesanan</div>
-              {selected.items.map((item, i) => (
+              {loadingDetail ? (
+                <p style={{ color: "#aaa", fontSize: 13 }}>Memuat item...</p>
+              ) : selected.items?.length > 0 ? selected.items.map((item, i) => (
                 <div key={i} className="drawer-item">
                   <div>
-                    <div className="drawer-item-name">{item.nama}</div>
+                    <div className="drawer-item-name">{item.nama || `Menu #${item.menu_id}`}</div>
                     <div className="drawer-item-qty">×{item.qty} porsi</div>
                   </div>
                   <div className="drawer-item-price">{formatRupiah(item.subtotal)}</div>
                 </div>
-              ))}
+              )) : (
+                <p style={{ color: "#aaa", fontSize: 13 }}>Klik Detail untuk load item</p>
+              )}
               <div className="drawer-total">
                 <span>Total Pembayaran</span>
                 <strong>{formatRupiah(selected.total)}</strong>
@@ -538,16 +569,10 @@ export default function Orders({ onNavigate }) {
             </div>
             {STATUS_FLOW[selected.status] && (
               <div className="drawer-actions">
-                <button
-                  className="drawer-action-btn primary"
-                  onClick={() => advanceStatus(selected.id)}
-                >
+                <button className="drawer-action-btn primary" onClick={() => advanceStatus(selected.id)}>
                   {ADVANCE_LABEL[selected.status]}
                 </button>
-                <button
-                  className="drawer-action-btn secondary"
-                  onClick={() => cancelOrder(selected.id)}
-                >
+                <button className="drawer-action-btn secondary" onClick={() => cancelOrder(selected.id)}>
                   ✕ Batalkan
                 </button>
               </div>
@@ -556,7 +581,6 @@ export default function Orders({ onNavigate }) {
         </>
       )}
 
-      {/* LOGOUT MODAL */}
       {showLogoutModal && (
         <div className="seller-modal-overlay" onClick={() => setShowLogoutModal(false)}>
           <div className="seller-modal" onClick={(e) => e.stopPropagation()}>
@@ -568,12 +592,7 @@ export default function Orders({ onNavigate }) {
             </div>
             <div className="seller-modal-btns">
               <button className="seller-modal-cancel" onClick={() => setShowLogoutModal(false)}>Batal</button>
-              <button
-                className="seller-modal-confirm-logout"
-                onClick={() => { setShowLogoutModal(false); handleNav("logout"); }}
-              >
-                Ya, Keluar
-              </button>
+              <button className="seller-modal-confirm-logout" onClick={() => { setShowLogoutModal(false); handleNav("logout"); }}>Ya, Keluar</button>
             </div>
           </div>
         </div>
