@@ -25,6 +25,28 @@ const firebaseConfig = {
 // VAPID key dari Firebase Console → Project Settings → Cloud Messaging → Web Push certificates
   const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 
+const BASE_URL_API = import.meta.env.VITE_API_URL || "http://localhost:5002";
+
+/**
+ * Simpan FCM token ke BE — dipanggil otomatis setelah dapat token
+ * BE butuh endpoint: PUT /api/users/fcm-token  (lihat users_fcm.js)
+ */
+async function saveFcmTokenToBE(token) {
+  try {
+    const jwtToken = localStorage.getItem("token");
+    if (!jwtToken) return; // belum login, skip
+    await fetch(`${BASE_URL_API}/api/users/fcm-token`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwtToken}`,
+      },
+      body: JSON.stringify({ fcm_token: token }),
+    });
+  } catch (err) {
+    console.warn("Gagal simpan FCM token ke BE:", err.message);
+  }
+}
 
 // Inisialisasi sekali — hindari duplikasi kalau modul di-import berkali-kali
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -56,8 +78,7 @@ export async function requestNotifPermission() {
     const token = await getToken(messaging, { vapidKey: VAPID_KEY });
     if (token) {
       console.log("FCM Token:", token);
-      // TODO: kirim token ini ke BE untuk disimpan per-user
-      // await saveFcmToken(token);
+      await saveFcmTokenToBE(token);
     }
     return token;
   } catch (err) {

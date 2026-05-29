@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { USER, getRekoMenus } from "../../data/DummyData";
-import { checkoutCart, processPayment } from "../../services/api";
+import { checkoutCart, getOrders } from "../../services/api";
 
 const COLORS = {
   primary: "#ffffff", secondary: "#D3968C", accent: "#c07060",
@@ -158,9 +158,26 @@ export default function Cart({ cart, setCart, onBack, onGoToHome, onGoToStatus, 
   const [ordered, setOrdered] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [activeOrderCount, setActiveOrderCount] = useState(0);
   const [error, setError] = useState(null);
   // order berhasil dibuat tapi payment gagal — tampilkan peringatan, bukan error keras
   const [pendingOrderId, setPendingOrderId] = useState(null);
+
+  // Fetch jumlah pesanan aktif untuk badge sidebar
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await getOrders();
+        const buyerId = user?.id;
+        const count = data.filter(o =>
+          ["pending", "paid", "cooking"].includes(o.status) &&
+          (buyerId ? String(o.buyer_id) === String(buyerId) : false)
+        ).length;
+        setActiveOrderCount(count);
+      } catch { /* badge tidak kritis, abaikan error */ }
+    };
+    load();
+  }, [user]);
 
   const items = Object.values(cart);
   const groups = groupByStall(cart);
@@ -224,6 +241,7 @@ export default function Cart({ cart, setCart, onBack, onGoToHome, onGoToStatus, 
           </button>
           <button className="nav-item" onClick={() => { onGoToStatus(); setSidebarOpen(false); }}>
             <span className="nav-item-icon">📋</span> Status Pesanan
+            {activeOrderCount > 0 && <span className="nav-badge">{activeOrderCount}</span>}
           </button>
           <button className="nav-item" onClick={() => { onGoToHistory(); setSidebarOpen(false); }}>
             <span className="nav-item-icon">🕐</span> Riwayat
@@ -242,6 +260,21 @@ export default function Cart({ cart, setCart, onBack, onGoToHome, onGoToStatus, 
           </button>
         </div>
       </aside>
+
+      {/* Modal logout di sini supaya jalan di semua kondisi cart */}
+      {showLogoutModal && (
+        <div className="overlay" onClick={() => setShowLogoutModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 14 }}>🚪</div>
+            <div className="modal-title">Keluar dari akun?</div>
+            <div className="modal-sub">Keranjang yang belum di-checkout akan hilang.</div>
+            <div className="modal-btns">
+              <button className="modal-cancel" onClick={() => setShowLogoutModal(false)}>Batal</button>
+              <button className="modal-confirm" onClick={() => { setShowLogoutModal(false); onLogout(); }}>Ya, Keluar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 
@@ -447,19 +480,7 @@ export default function Cart({ cart, setCart, onBack, onGoToHome, onGoToStatus, 
           </div>
         )}
 
-        {showLogoutModal && (
-          <div className="overlay" onClick={() => setShowLogoutModal(false)}>
-            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 48, marginBottom: 14 }}>🚪</div>
-              <div className="modal-title">Keluar dari akun?</div>
-              <div className="modal-sub">Keranjang yang belum di-checkout akan hilang.</div>
-              <div className="modal-btns">
-                <button className="modal-cancel" onClick={() => setShowLogoutModal(false)}>Batal</button>
-                <button className="modal-confirm" onClick={() => { setShowLogoutModal(false); onLogout(); }}>Ya, Keluar</button>
-              </div>
-            </div>
-          </div>
-        )}
+{/* logout modal ada di SidebarNav */}
       </div>
     </>
   );

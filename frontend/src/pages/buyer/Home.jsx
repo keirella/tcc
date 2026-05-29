@@ -137,6 +137,13 @@ const css = `
   .co-price { font-size: 15px; font-weight: 800; color: rgba(247,244,213,0.9); }
   .hamburger { display: none; background: none; border: none; font-size: 22px; cursor: pointer; color: #105666; }
   .sidebar-overlay { display: none; position: fixed; inset: 0; background: ${COLORS.overlay}; z-index: 190; }
+  .notif-toast { position: fixed; top: 80px; right: 24px; z-index: 999; max-width: 340px; background: white; border-radius: 16px; box-shadow: 0 8px 32px rgba(16,86,102,0.18); padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px; animation: slideInRight 0.3s ease; border-left: 4px solid ${COLORS.secondary}; }
+  @keyframes slideInRight { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .notif-toast-icon { font-size: 22px; flex-shrink: 0; }
+  .notif-toast-title { font-size: 13px; font-weight: 700; color: ${COLORS.text_dark}; margin-bottom: 3px; }
+  .notif-toast-body { font-size: 12px; color: rgba(16,86,102,0.65); line-height: 1.4; }
+  .notif-toast-close { margin-left: auto; background: none; border: none; font-size: 16px; cursor: pointer; color: rgba(16,86,102,0.3); flex-shrink: 0; padding: 0 4px; }
+  .notif-toast-close:hover { color: ${COLORS.text_dark}; }
   .modal-overlay { position: fixed; inset: 0; background: ${COLORS.overlay}; display: flex; align-items: center; justify-content: center; z-index: 300; backdrop-filter: blur(4px); padding: 20px; }
   .modal { background: ${COLORS.bg_light}; border-radius: 24px; padding: 32px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: popIn 0.25s ease; text-align: center; }
   @keyframes popIn { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -178,10 +185,18 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
-  const [notifs, setNotifs] = useState([]); // diisi dari Firebase listener
+  // Load notifs dari localStorage supaya tidak hilang saat pindah halaman
+  const [notifs, setNotifs] = useState(() => {
+    try {
+      const saved = localStorage.getItem("notifs");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [toastNotif, setToastNotif] = useState(null); // popup dari atas
 
   // Pesanan aktif dari API — kosong dulu sampai data datang
   const [activeOrders, setActiveOrders] = useState([]);
+  const [activeOrderCount, setActiveOrderCount] = useState(0); // total semua, untuk badge
 
   useEffect(() => {
     const loadData = async () => {
@@ -212,25 +227,38 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
     loadData();
   }, []);
 
-  // Setup Firebase push notification setelah login
+  // Setup Firebase push notification — tunggu sampai user & token tersedia
   useEffect(() => {
+    // Jangan setup kalau belum login
+    if (!user?.id) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
     let unsubscribe = () => {};
     const setup = async () => {
-      await requestNotifPermission();
+      await requestNotifPermission(); // di dalam ini saveFcmTokenToBE dipanggil
       unsubscribe = listenForegroundNotif(({ title, body, data }) => {
         const newNotif = {
           title,
           body,
           data,
-          time: fmtRelative(new Date().toISOString()),
+          time: new Date().toISOString(), // simpan ISO, format saat render
           read: false,
         };
-        setNotifs(prev => [newNotif, ...prev].slice(0, 20)); // max 20 notif
+        setNotifs(prev => {
+          const updated = [newNotif, ...prev].slice(0, 20);
+          // Persist ke localStorage supaya tidak hilang saat pindah halaman
+          try { localStorage.setItem("notifs", JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+        // Tampilkan toast popup dari atas
+        setToastNotif(newNotif);
+        setTimeout(() => setToastNotif(null), 5000); // hilang setelah 5 detik
       });
     };
     setup().catch(console.warn);
     return () => unsubscribe();
-  }, []);
+  }, [user?.id]); // re-run kalau user berubah (misal login ulang)
 
   // Fetch active orders milik user ini, lengkap dengan nama item
   useEffect(() => {
@@ -250,13 +278,17 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
           (buyerId ? String(o.buyer_id) === String(buyerId) : false)
         );
 
+        // Simpan total count untuk badge — sebelum di-slice
+        setActiveOrderCount(mine.length);
+
         if (mine.length === 0) {
           setActiveOrders([]);
+          setActiveOrderCount(0);
           return;
         }
 
         // Fetch detail tiap order untuk dapat nama item
-        // Jalankan parallel, maksimal 5 sekaligus supaya tidak spam BE
+        // Sidebar panel batasi 5 supaya tidak spam BE
         const details = await Promise.allSettled(
           mine.slice(0, 5).map(o => getOrderById(o.id))
         );
@@ -312,6 +344,18 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
         <div className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} />
         {showNotifPanel && <div style={{ position: "fixed", inset: 0, zIndex: 150 }} onClick={() => setShowNotifPanel(false)} />}
 
+        {/* Toast notif popup dari atas kanan */}
+        {toastNotif && (
+          <div className="notif-toast">
+            <span className="notif-toast-icon">🔔</span>
+            <div>
+              {toastNotif.title && <div className="notif-toast-title">{toastNotif.title}</div>}
+              <div className="notif-toast-body">{toastNotif.body}</div>
+            </div>
+            <button className="notif-toast-close" onClick={() => setToastNotif(null)}>✕</button>
+          </div>
+        )}
+
         <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
           <div className="sidebar-brand">
             <span className="sidebar-brand-icon">🍽️</span>
@@ -331,7 +375,7 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
               </button>
               <button className="nav-item" onClick={() => { onGoToStatus(); setSidebarOpen(false); }}>
                 <span className="nav-item-icon">📋</span> Status Pesanan
-                {activeOrders.length > 0 && <span className="nav-badge">{activeOrders.length}</span>}
+                {activeOrderCount > 0 && <span className="nav-badge">{activeOrderCount}</span>}
               </button>
               <button className="nav-item" onClick={() => { onGoToHistory(); setSidebarOpen(false); }}>
                 <span className="nav-item-icon">🕐</span> Riwayat
@@ -379,7 +423,20 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
               <div style={{ position: "relative" }}>
                 <button
                   className={`notif-topbar-btn ${notifs.length > 0 ? "has-notif" : ""}`}
-                  onClick={() => setShowNotifPanel(p => !p)}
+                  onClick={() => {
+                  setShowNotifPanel(p => {
+                    const next = !p;
+                    if (next) {
+                      // Tandai semua sudah dibaca saat panel dibuka
+                      setNotifs(prev => {
+                        const updated = prev.map(n => ({ ...n, read: true }));
+                        try { localStorage.setItem("notifs", JSON.stringify(updated)); } catch {}
+                        return updated;
+                      });
+                    }
+                    return next;
+                  });
+                }}
                   title="Notifikasi"
                 >
                   🔔
@@ -402,7 +459,7 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
                             <div className={`notif-dot ${n.read ? "read" : ""}`} />
                             <div>
                               <div className="notif-row-msg">{n.title && <strong>{n.title} — </strong>}{n.body}</div>
-                              <div className="notif-row-time">{n.time || ""}</div>
+                              <div className="notif-row-time">{fmtRelative(n.time)}</div>
                             </div>
                           </div>
                         ))
