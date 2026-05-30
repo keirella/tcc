@@ -45,9 +45,22 @@ export async function login(email, password) {
   return data;
 }
 
-export function logout() {
+export async function logout() {
+  // Hapus FCM token dari DB dulu supaya user ini tidak dapat notif orang lain
+  // (penting kalau 1 device dipakai banyak user)
+  try {
+    const token = getToken();
+    if (token) {
+      await fetch(`${BASE_URL_API}/api/users/fcm-token`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    }
+  } catch { /* tidak perlu crash kalau gagal */ }
+
   localStorage.removeItem("token");
   localStorage.removeItem("user");
+  localStorage.removeItem("notifs"); // hapus notif lokal juga
 }
 
 export function getSavedUser() {
