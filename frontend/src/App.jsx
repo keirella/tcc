@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { logout, getSavedUser } from './services/api';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Home from './pages/buyer/Home';
@@ -12,19 +13,48 @@ import Orders from './pages/seller/Orders';
 function App() {
   const [cart, setCart] = useState({});
   const [page, setPage] = useState("login");
-  const [user, setUser] = useState(null);
+
+  // Load user dari localStorage saat pertama render
+  // Supaya refresh tidak balik ke login
+  const [user, setUser] = useState(() => getSavedUser());
 
   const go = (target) => setPage(target);
 
+  // Saat mount — kalau sudah ada user (dari localStorage), langsung ke halaman yang sesuai
+  useEffect(() => {
+    const savedUser = getSavedUser();
+    if (savedUser) {
+      setUser(savedUser);
+      // Restore halaman terakhir kalau ada, fallback ke home/dashboard
+      const lastPage = sessionStorage.getItem("lastPage");
+      if (lastPage) {
+        setPage(lastPage);
+      } else {
+        setPage(savedUser.role === "buyer" ? "home" : "dashboard");
+      }
+    }
+  }, []);
+
+  // Simpan halaman aktif ke sessionStorage supaya bisa di-restore setelah refresh
+  useEffect(() => {
+    if (user && page !== "login" && page !== "register") {
+      sessionStorage.setItem("lastPage", page);
+    }
+  }, [page, user]);
+
   const handleLoginSuccess = (userData) => {
     setUser(userData);
+    // Bersihkan halaman terakhir dari sesi sebelumnya
+    sessionStorage.removeItem("lastPage");
     if (userData.role === "buyer") go("home");
     else go("dashboard");
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout(); // hapus FCM token dari DB + bersihkan localStorage
     setUser(null);
     setCart({});
+    sessionStorage.removeItem("lastPage");
     go("login");
   };
 
@@ -48,7 +78,7 @@ function App() {
   };
 
   // ── Auth ─────────────────────────────────────────────────────
-  if (page === "login") {
+  if (!user || page === "login") {
     return <Login onLoginSuccess={handleLoginSuccess} onGoToRegister={() => go("register")} />;
   }
   if (page === "register") {
@@ -68,13 +98,12 @@ function App() {
   // ── Seller ─────────────────────────────────────────────────────
   if (user?.role === "seller") {
     switch (page) {
-      case "menu":      return <Menu    {...sellerProps} />;
-      case "orders":    return <Orders  {...sellerProps} />;
-      default:          return <Dashboard {...sellerProps} />;
+      case "menu":    return <Menu      {...sellerProps} />;
+      case "orders":  return <Orders    {...sellerProps} />;
+      default:        return <Dashboard {...sellerProps} />;
     }
   }
 
-  // Fallback
   return <Login onLoginSuccess={handleLoginSuccess} onGoToRegister={() => go("register")} />;
 }
 
