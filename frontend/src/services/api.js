@@ -2,8 +2,8 @@
 // Taruh di: src/services/api.js
 // ─────────────────────────────────────────────────────────────────
 
-const BASE_URL_AUTH = "http://localhost:5001";
-const BASE_URL_API  = "http://localhost:5002";
+const BASE_URL_AUTH = "https://auth-service-194342266835.us-central1.run.app/";
+const BASE_URL_API  = "https://api-service-194342266835.us-central1.run.app/";
 
 function getToken() {
   return localStorage.getItem("token");
