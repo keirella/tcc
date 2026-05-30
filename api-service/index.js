@@ -8,7 +8,7 @@ const app = express();
 console.log("WAKTU:", new Date().toString());
 console.log("TZ:", process.env.TZ);
 
-// ── Auth Middleware — inline, tidak perlu file terpisah ───────────
+// ── Auth Middleware ───────────
 function authMiddleware(req, res, next) {
     const token = req.headers['authorization']?.split(' ')[1];
     if (!token) return res.status(401).json({ message: "Token tidak ditemukan" });
@@ -30,6 +30,11 @@ const userRoutes    = require('./routes/users');
 app.use(cors());
 app.use(express.json());
 
+// Rute Default (Health Check) agar tidak "Cannot GET /"
+app.get('/', (req, res) => {
+    res.status(200).json({ status: "success", message: "API Service Kantin Digital is Running!" });
+});
+
 // Publik — tidak butuh login
 app.use('/api/menus',    menuRoutes);
 app.use('/api/stalls',   stallRoutes);
@@ -39,7 +44,9 @@ app.use('/api/orders',   authMiddleware, orderRoutes);
 app.use('/api/payments', authMiddleware, paymentRoutes);
 app.use('/api/users',    authMiddleware, userRoutes);
 
-const PORT = process.env.PORT || 5002;
+// Cloud Run biasanya menggunakan port 8080 sebagai default, 
+// tapi tetap bisa membaca environment variable PORT
+const PORT = process.env.PORT || 8080; 
 app.listen(PORT, () => {
     console.log(`=========================================`);
     console.log(`API Service JALAN di port ${PORT}`);
