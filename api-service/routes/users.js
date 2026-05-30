@@ -31,4 +31,17 @@ router.put('/fcm-token', async (req, res) => {
     }
 });
 
+// DELETE /api/users/fcm-token — hapus token saat logout
+// Dipanggil dari FE sebelum logout supaya user lama tidak dapat notif orang lain
+router.delete('/fcm-token', async (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: "Tidak terautentikasi" });
+    try {
+        await pool.query('UPDATE users SET fcm_token = NULL WHERE id = ?', [userId]);
+        res.json({ message: "FCM token dihapus" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
