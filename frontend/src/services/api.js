@@ -129,6 +129,14 @@ export async function deleteMenu(menuId) {
   return request(BASE_URL_API, `/api/menus/${menuId}`, { method: "DELETE" });
 }
 
+
+export async function reduceMenuStock(menuId, qty) {
+  return request(BASE_URL_API, `/api/menus/${menuId}/stok`, {
+    method: "PATCH",
+    body: JSON.stringify({ qty }),
+  });
+}
+
 export async function getEarnings(stallId) {
   return request(BASE_URL_API, `/api/menus/earnings/${stallId}`);
 }
@@ -207,6 +215,12 @@ export async function checkoutCart(cart, buyerId) {
     err.orderId = orderId;
     throw err;
   }
+
+  // Kurangi stok tiap menu yang dibeli setelah payment sukses
+  const cartItems = Object.values(cart);
+  await Promise.allSettled(
+    cartItems.map(item => reduceMenuStock(item.id, item.qty))
+  );
 
   return { orderId, total };
 }

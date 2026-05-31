@@ -73,4 +73,21 @@ router.delete('/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+
+// 7. PATCH Kurangi stok menu saat payment berhasil
+router.patch('/:id/stok', async (req, res) => {
+    const { qty } = req.body;
+    if (!qty || qty <= 0) return res.status(400).json({ error: "qty harus lebih dari 0" });
+    try {
+        const [result] = await pool.query(
+            'UPDATE menus SET stok = GREATEST(0, stok - ?) WHERE id = ?',
+            [qty, req.params.id]
+        );
+        if (result.affectedRows === 0) return res.status(404).json({ message: "Menu tidak ditemukan" });
+        // Kembalikan stok terbaru
+        const [rows] = await pool.query('SELECT stok FROM menus WHERE id = ?', [req.params.id]);
+        res.json({ message: "Stok berhasil dikurangi", stok: rows[0].stok });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;

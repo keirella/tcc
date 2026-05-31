@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   getSavedUser,
   getOrders,
@@ -251,6 +251,22 @@ const menuStyles = `
     cursor: pointer; background: white; color: #999; transition: all 0.2s;
   }
   .filter-btn.active { background: ${COLORS.mossGreen}; color: ${COLORS.darkGreen}; border-color: ${COLORS.mossGreen}; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(0);
+    background: ${COLORS.darkGreen}; color: ${COLORS.beige};
+    padding: 13px 26px; border-radius: 14px; font-size: 14px; font-weight: 600;
+    box-shadow: 0 8px 28px rgba(10,51,35,0.25); z-index: 999;
+    animation: toastIn 0.3s ease, toastOut 0.3s ease 2.2s forwards;
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Poppins', sans-serif;
+  }
+  .toast.success { background: ${COLORS.mossGreen}; color: ${COLORS.darkGreen}; }
+  .toast.error   { background: ${COLORS.rosyBrown}; color: white; }
+  @keyframes toastIn  { from { opacity:0; transform: translateX(-50%) translateY(16px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+  @keyframes toastOut { from { opacity:1; } to { opacity:0; transform: translateX(-50%) translateY(16px); } }
+
   .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
   .menu-card { background: white; border-radius: 18px; overflow: hidden; box-shadow: 0 2px 14px rgba(10,51,35,0.07); transition: transform 0.2s, box-shadow 0.2s; position: relative; }
   .menu-card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(10,51,35,0.12); }
@@ -262,14 +278,21 @@ const menuStyles = `
   }
   .menu-card-img img { width: 100%; height: 100%; object-fit: cover; }
   .menu-card-img .img-placeholder { font-size: 56px; }
+
+  /* ── stock badge — clickable ── */
   .stock-badge {
     position: absolute; top: 12px; right: 12px;
     padding: 4px 10px; border-radius: 20px;
     font-size: 11px; font-weight: 700; font-family: 'Poppins', sans-serif;
+    cursor: pointer; border: none; transition: opacity 0.15s, transform 0.15s;
+    user-select: none;
   }
+  .stock-badge:hover { opacity: 0.85; transform: scale(1.05); }
+  .stock-badge:active { transform: scale(0.97); }
   .stock-badge.ok  { background: rgba(131,153,88,0.2);   color: ${COLORS.mossGreen}; }
   .stock-badge.low { background: rgba(211,150,140,0.25); color: ${COLORS.rosyBrown}; }
   .stock-badge.out { background: rgba(220,50,50,0.1);    color: #c0392b; }
+
   .menu-card-body { padding: 18px 20px; }
   .menu-card-name { font-size: 16px; font-weight: 700; color: ${COLORS.darkGreen}; margin: 0 0 4px; }
   .menu-card-meta { font-size: 12px; color: #aaa; margin: 0 0 14px; font-weight: 500; }
@@ -286,8 +309,10 @@ const menuStyles = `
   .stock-bar-bg { flex: 1; height: 6px; background: #f0ede0; border-radius: 10px; overflow: hidden; }
   .stock-bar-fill { height: 100%; border-radius: 10px; transition: width 0.6s ease; }
   .stock-count { font-size: 12px; font-weight: 700; white-space: nowrap; }
+
+  /* ── Modal ── */
   .modal-overlay { position: fixed; inset: 0; background: rgba(10,51,35,0.45); z-index: 100; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
-  .modal { background: white; border-radius: 20px; padding: 32px; width: 460px; max-width: 95vw; box-shadow: 0 20px 60px rgba(10,51,35,0.2); }
+  .modal { background: white; border-radius: 20px; padding: 32px; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(10,51,35,0.2); }
   .modal h2 { font-size: 20px; font-weight: 800; color: ${COLORS.darkGreen}; margin: 0 0 24px; }
   .form-group { margin-bottom: 18px; }
   .form-group label { display: block; font-size: 12px; font-weight: 700; color: ${COLORS.darkGreen}; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
@@ -300,6 +325,27 @@ const menuStyles = `
   .save-btn { padding: 11px 28px; border-radius: 10px; border: none; background: ${COLORS.darkGreen}; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 700; color: ${COLORS.beige}; cursor: pointer; transition: all 0.2s; }
   .save-btn:hover { background: ${COLORS.midnightGreen}; }
   .save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* ── Stok toggle di dalam modal ── */
+  .stok-toggle-group { display: flex; gap: 10px; margin-top: 4px; }
+  .stok-toggle-btn {
+    flex: 1; padding: 10px 8px; border-radius: 10px; border: 2px solid transparent;
+    font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .stok-toggle-btn.ok   { background: rgba(131,153,88,0.12); color: ${COLORS.mossGreen}; border-color: rgba(131,153,88,0.2); }
+  .stok-toggle-btn.ok.selected   { background: ${COLORS.mossGreen}; color: ${COLORS.darkGreen}; border-color: ${COLORS.mossGreen}; }
+  .stok-toggle-btn.low  { background: rgba(211,150,140,0.12); color: ${COLORS.rosyBrown}; border-color: rgba(211,150,140,0.2); }
+  .stok-toggle-btn.low.selected  { background: ${COLORS.rosyBrown}; color: white; border-color: ${COLORS.rosyBrown}; }
+  .stok-toggle-btn.out  { background: rgba(220,50,50,0.08); color: #c0392b; border-color: rgba(220,50,50,0.15); }
+  .stok-toggle-btn.out.selected  { background: #e74c3c; color: white; border-color: #e74c3c; }
+
+  /* ── Stok hint di bawah input ── */
+  .stok-hint { font-size: 11px; margin-top: 6px; font-weight: 500; }
+  .stok-hint.ok  { color: ${COLORS.mossGreen}; }
+  .stok-hint.low { color: ${COLORS.rosyBrown}; }
+  .stok-hint.out { color: #e74c3c; }
+
   .empty-state { text-align: center; padding: 60px 20px; color: #bbb; grid-column: 1/-1; }
   .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
   .empty-state h3 { font-size: 16px; font-weight: 600; margin: 0 0 8px; color: ${COLORS.darkGreen}; }
@@ -307,45 +353,91 @@ const menuStyles = `
   .foto-preview { margin-top: 10px; border-radius: 10px; overflow: hidden; height: 120px; background: #f0ede0; display: flex; align-items: center; justify-content: center; }
   .foto-preview img { width: 100%; height: 100%; object-fit: cover; }
   .foto-preview .no-img { font-size: 32px; color: #ccc; }
+
+  .loading-overlay {
+    position: fixed; inset: 0; background: rgba(10,51,35,0.15);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 50; font-family: 'Poppins', sans-serif;
+  }
+  .loading-spinner {
+    background: white; border-radius: 16px; padding: 24px 32px;
+    font-size: 14px; color: ${COLORS.darkGreen}; font-weight: 600;
+    box-shadow: 0 8px 32px rgba(10,51,35,0.12);
+  }
 `;
 
 function getStockStatus(stok) {
-  if (stok === 0) return { label: "Habis",       cls: "out" };
-  if (stok < 5)  return { label: "Hampir Habis", cls: "low" };
-  return              { label: `Stok: ${stok}`, cls: "ok"  };
+  if (stok < 5) return { label: "⚠️ Stok Rendah", cls: "low" };
+  return              { label: "✅ Stok Aman",    cls: "ok"  };
 }
 function formatRupiah(val) { return "Rp " + Number(val).toLocaleString("id-ID"); }
 
+// ── Stok status dari angka ──
+function getStokClass(stok) {
+  const n = Number(stok);
+  if (n < 5) return "low";
+  return "ok";
+}
+
 export default function Menu({ onNavigate }) {
-  const [menus, setMenus]                   = useState([]);
-  const [orders, setOrders]                 = useState([]);
-  const [search, setSearch]                 = useState("");
-  const [filter, setFilter]                 = useState("all");
-  const [showModal, setShowModal]           = useState(false);
+  const [menus, setMenus]                     = useState([]);
+  const [orders, setOrders]                   = useState([]);
+  const [search, setSearch]                   = useState("");
+  const [filter, setFilter]                   = useState("all");
+  const [showModal, setShowModal]             = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [editing, setEditing]               = useState(null);
-  const [form, setForm]                     = useState({ nama: "", harga: "", stok: "", foto_url: "" });
-  const [activeNav, setActiveNav]           = useState("menu");
-  const [saving, setSaving]                 = useState(false);
+  const [editing, setEditing]                 = useState(null);
+  const [form, setForm]                       = useState({ nama: "", harga: "", stok: "", foto_url: "" });
+  const [activeNav, setActiveNav]             = useState("menu");
+  const [saving, setSaving]                   = useState(false);
+  const [loadingMenus, setLoadingMenus]       = useState(false);
+  const [toast, setToast]                     = useState(null); // { msg, type }
 
   const user    = getSavedUser();
   const stallId = user?.stall_id || 1;
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [allMenus, allOrders] = await Promise.all([getMenus(), getOrders()]);
-        setMenus(allMenus.filter((m) => m.stall_id === stallId));
-        setOrders(allOrders);
-      } catch (err) {
-        console.error("Gagal load data menu:", err);
-      }
+  // ── Toast helper ──
+  const showToast = useCallback((msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 2500);
+  }, []);
+
+  // ── Load semua data dari API ──
+  const loadData = useCallback(async () => {
+    try {
+      setLoadingMenus(true);
+      const [allMenus, allOrders] = await Promise.all([getMenus(), getOrders()]);
+      setMenus(allMenus.filter((m) => m.stall_id === stallId));
+      setOrders(allOrders);
+    } catch (err) {
+      console.error("Gagal load data menu:", err);
+      showToast("Gagal memuat data menu", "error");
+    } finally {
+      setLoadingMenus(false);
     }
-    loadData();
+  }, [stallId, showToast]);
+
+  // ── Silent refresh untuk polling (tidak trigger loading indicator) ──
+  const silentRefresh = useCallback(async () => {
+    try {
+      const [allMenus, allOrders] = await Promise.all([getMenus(), getOrders()]);
+      setMenus(allMenus.filter((m) => m.stall_id === stallId));
+      setOrders(allOrders);
+    } catch (err) {
+      console.error("Silent refresh gagal:", err);
+    }
   }, [stallId]);
 
-  const liveOrders   = orders.filter((o) => ["pending", "paid", "cooking"].includes(o.status));
-  const pendingCount = orders.filter((o) => o.status === "pending").length;
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // ── Auto-refresh stok setiap 10 detik (silent, tanpa loading flicker) ──
+  useEffect(() => {
+    const interval = setInterval(() => { silentRefresh(); }, 10000);
+    return () => clearInterval(interval);
+  }, [silentRefresh]);
+
+  const liveOrders    = orders.filter((o) => ["pending", "paid", "cooking"].includes(o.status));
+  const pendingCount  = orders.filter((o) => o.status === "pending").length;
   const notifications = buildSellerNotifs(orders);
 
   const handleNav = (key) => {
@@ -356,42 +448,81 @@ export default function Menu({ onNavigate }) {
 
   const filtered = menus.filter((m) => {
     const matchSearch = m.nama.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === "all" || (filter === "low" && m.stok < 5) || (filter === "ok" && m.stok >= 5);
+    const matchFilter =
+      filter === "all" ||
+      (filter === "low" && m.stok < 5) ||
+      (filter === "ok"  && m.stok >= 5);
     return matchSearch && matchFilter;
   });
 
-  const openAdd  = () => { setEditing(null); setForm({ nama: "", harga: "", stok: "", foto_url: "" }); setShowModal(true); };
-  const openEdit = (m) => { setEditing(m.id); setForm({ nama: m.nama, harga: m.harga, stok: m.stok, foto_url: m.foto_url || "" }); setShowModal(true); };
+  const openAdd = () => {
+    setEditing(null);
+    setForm({ nama: "", harga: "", stok: "", foto_url: "" });
+    setShowModal(true);
+  };
 
+  const openEdit = (m) => {
+    setEditing(m.id);
+    setForm({ nama: m.nama, harga: m.harga, stok: m.stok, foto_url: m.foto_url || "" });
+    setShowModal(true);
+  };
+
+  // ── Point 1 fix: reload dari API setelah save ──
   const handleSave = async () => {
-    if (!form.nama || !form.harga) return;
+    if (!form.nama.trim() || !form.harga) {
+      showToast("Nama dan harga wajib diisi!", "error");
+      return;
+    }
     setSaving(true);
     try {
-      const payload = { ...form, harga: +form.harga, stok: +form.stok, stall_id: stallId };
+      const payload = {
+        nama:     form.nama.trim(),
+        harga:    Number(form.harga),
+        stok:     Number(form.stok) || 0,
+        foto_url: form.foto_url.trim(),
+        stall_id: stallId,
+      };
+
       if (editing) {
         await updateMenu(editing, payload);
-        setMenus((prev) => prev.map((m) => m.id === editing ? { ...m, ...payload } : m));
+        showToast(`Menu "${payload.nama}" berhasil diperbarui ✏️`);
       } else {
-        const res = await addMenu(payload);
-        setMenus((prev) => [...prev, { id: res.id || Date.now(), stall_id: stallId, ...payload }]);
+        await addMenu(payload);
+        showToast(`Menu "${payload.nama}" berhasil ditambahkan ✅`);
       }
+
       setShowModal(false);
+      // Reload dari API supaya state benar-benar sinkron dengan database
+      await loadData();
     } catch (err) {
-      alert("Gagal menyimpan menu: " + err.message);
+      showToast("Gagal menyimpan: " + err.message, "error");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Hapus menu ini?")) return;
+  const handleDelete = async (id, nama) => {
+    if (!window.confirm(`Hapus menu "${nama}"?`)) return;
     try {
       await deleteMenu(id);
       setMenus((prev) => prev.filter((m) => m.id !== id));
+      showToast(`Menu "${nama}" dihapus 🗑️`);
     } catch (err) {
-      alert("Gagal menghapus menu: " + err.message);
+      showToast("Gagal menghapus: " + err.message, "error");
     }
   };
+
+  // ── Point 2: klik badge stok di card → langsung filter ──
+  const handleBadgeClick = (cls) => {
+    if (cls === "ok")  { setFilter("ok");  return; }
+    if (cls === "low") { setFilter("low"); return; }
+  };
+
+  // ── stok status saat ini di form (real-time) ──
+  const formStokCls  = getStokClass(form.stok);
+  const formStokHint = formStokCls === "ok"
+    ? "✅ Stok Aman"
+    : "⚠️ Stok Rendah (kurang dari 5)";
 
   return (
     <div className="menu-root">
@@ -407,6 +538,11 @@ export default function Menu({ onNavigate }) {
         user={user}
       />
 
+      {/* Toast notification */}
+      {toast && (
+        <div className={`toast ${toast.type}`}>{toast.msg}</div>
+      )}
+
       <main className="menu-main">
         <div className="menu-header">
           <div>
@@ -416,6 +552,7 @@ export default function Menu({ onNavigate }) {
           <button className="add-btn" onClick={openAdd}>＋ Tambah Menu</button>
         </div>
 
+        {/* ── Filter bar ── */}
         <div className="menu-search-row">
           <input
             className="search-input"
@@ -423,89 +560,170 @@ export default function Menu({ onNavigate }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          {["all", "ok", "low"].map((f) => (
-            <button key={f} className={`filter-btn${filter === f ? " active" : ""}`} onClick={() => setFilter(f)}>
-              {f === "all" ? "Semua" : f === "ok" ? "Stok Aman" : "⚠️ Stok Rendah"}
+          {[
+            { key: "all", label: "Semua" },
+            { key: "ok",  label: "✅ Stok Aman" },
+            { key: "low", label: "⚠️ Stok Rendah" },
+          ].map((f) => (
+            <button
+              key={f.key}
+              className={`filter-btn${filter === f.key ? " active" : ""}`}
+              onClick={() => setFilter(f.key)}
+            >
+              {f.label}
             </button>
           ))}
         </div>
 
-        <div className="menu-grid">
-          {filtered.length === 0 ? (
-            <div className="empty-state">
-              <div className="emoji">🍽️</div>
-              <h3>Belum ada menu</h3>
-              <p>Tambah menu pertama kamu!</p>
-            </div>
-          ) : filtered.map((m) => {
-            const { label, cls } = getStockStatus(m.stok);
-            const barColor = cls === "out" ? "#e74c3c" : cls === "low" ? COLORS.rosyBrown : COLORS.mossGreen;
-            const barWidth = Math.min(100, (m.stok / 30) * 100);
-            return (
-              <div key={m.id} className="menu-card">
-                <div className="menu-card-img">
-                  {m.foto_url
-                    ? <img src={m.foto_url} alt={m.nama} />
-                    : <span className="img-placeholder">🍴</span>}
-                  <span className={`stock-badge ${cls}`}>{label}</span>
-                </div>
-                <div className="menu-card-body">
-                  <div className="menu-card-name">{m.nama}</div>
-                  <div className="menu-card-meta">{m.stall_name || user?.name || "Stan"}</div>
-                  <div className="stock-row">
-                    <span className="stock-label">Stok</span>
-                    <div className="stock-bar-bg">
-                      <div className="stock-bar-fill" style={{ width: `${barWidth}%`, background: barColor }} />
-                    </div>
-                    <span className="stock-count" style={{ color: barColor }}>{m.stok}</span>
-                  </div>
-                  <div className="menu-card-footer">
-                    <span className="menu-price">{formatRupiah(m.harga)}</span>
-                    <div className="menu-actions">
-                      <button className="icon-btn edit"   onClick={() => openEdit(m)}        title="Edit">✏️</button>
-                      <button className="icon-btn delete" onClick={() => handleDelete(m.id)} title="Hapus">🗑️</button>
-                    </div>
-                  </div>
-                </div>
+        {loadingMenus ? (
+          <div style={{ textAlign: "center", padding: "60px 0", color: COLORS.mossGreen, fontFamily: "'Poppins', sans-serif" }}>
+            Memuat menu...
+          </div>
+        ) : (
+          <div className="menu-grid">
+            {filtered.length === 0 ? (
+              <div className="empty-state">
+                <div className="emoji">🍽️</div>
+                <h3>Belum ada menu</h3>
+                <p>{filter === "all" ? "Tambah menu pertama kamu!" : "Tidak ada menu dengan filter ini."}</p>
               </div>
-            );
-          })}
-        </div>
+            ) : filtered.map((m) => {
+              const { label, cls } = getStockStatus(m.stok);
+              const barColor = cls === "low" ? COLORS.rosyBrown : COLORS.mossGreen;
+              const barWidth = Math.min(100, (m.stok / 30) * 100);
+              return (
+                <div key={m.id} className="menu-card">
+                  <div className="menu-card-img">
+                    {m.foto_url
+                      ? <img src={m.foto_url} alt={m.nama} />
+                      : <span className="img-placeholder">🍴</span>}
+
+                    {/* ── Point 2: badge stok bisa diklik → filter ── */}
+                    <button
+                      className={`stock-badge ${cls}`}
+                      onClick={() => handleBadgeClick(cls)}
+                      title={`Klik untuk filter "${label}"`}
+                    >
+                      {label}
+                    </button>
+                  </div>
+                  <div className="menu-card-body">
+                    <div className="menu-card-name">{m.nama}</div>
+                    <div className="menu-card-meta">{m.stall_name || user?.name || "Stan"}</div>
+                    <div className="stock-row">
+                      <span className="stock-label">Stok</span>
+                      <div className="stock-bar-bg">
+                        <div className="stock-bar-fill" style={{ width: `${barWidth}%`, background: barColor }} />
+                      </div>
+                      <span className="stock-count" style={{ color: barColor }}>{m.stok}</span>
+                    </div>
+                    <div className="menu-card-footer">
+                      <span className="menu-price">{formatRupiah(m.harga)}</span>
+                      <div className="menu-actions">
+                        <button className="icon-btn edit"   onClick={() => openEdit(m)}              title="Edit">✏️</button>
+                        <button className="icon-btn delete" onClick={() => handleDelete(m.id, m.nama)} title="Hapus">🗑️</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </main>
 
+      {/* ── Modal Tambah / Edit ── */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>{editing ? "Edit Menu" : "Tambah Menu Baru"}</h2>
+            <h2>{editing ? "✏️ Edit Menu" : "➕ Tambah Menu Baru"}</h2>
+
             <div className="form-group">
               <label>Nama Menu</label>
-              <input className="form-input" placeholder="Contoh: Nasi Rendang" value={form.nama} onChange={(e) => setForm({ ...form, nama: e.target.value })} />
+              <input
+                className="form-input"
+                placeholder="Contoh: Nasi Rendang"
+                value={form.nama}
+                onChange={(e) => setForm({ ...form, nama: e.target.value })}
+              />
             </div>
+
             <div className="form-row">
               <div className="form-group">
                 <label>Harga (Rp)</label>
-                <input className="form-input" type="number" placeholder="15000" value={form.harga} onChange={(e) => setForm({ ...form, harga: e.target.value })} />
+                <input
+                  className="form-input"
+                  type="number"
+                  min="0"
+                  placeholder="15000"
+                  value={form.harga}
+                  onChange={(e) => setForm({ ...form, harga: e.target.value })}
+                />
               </div>
               <div className="form-group">
                 <label>Stok</label>
-                <input className="form-input" type="number" placeholder="20" value={form.stok} onChange={(e) => setForm({ ...form, stok: e.target.value })} />
+                <input
+                  className="form-input"
+                  type="number"
+                  min="0"
+                  placeholder="20"
+                  value={form.stok}
+                  onChange={(e) => setForm({ ...form, stok: e.target.value })}
+                />
+                {/* ── Point 2: hint status stok real-time ── */}
+                {form.stok !== "" && (
+                  <div className={`stok-hint ${formStokCls}`}>{formStokHint}</div>
+                )}
               </div>
             </div>
+
+            {/* ── Point 2: tombol shortcut atur stok di modal ── */}
+            <div className="form-group">
+              <label>Atur Status Stok Cepat</label>
+              <div className="stok-toggle-group">
+                <button
+                  type="button"
+                  className={`stok-toggle-btn ok${formStokCls === "ok" ? " selected" : ""}`}
+                  onClick={() => setForm({ ...form, stok: 20 })}
+                >
+                  ✅ Stok Aman (set 20)
+                </button>
+                <button
+                  type="button"
+                  className={`stok-toggle-btn low${formStokCls === "low" ? " selected" : ""}`}
+                  onClick={() => setForm({ ...form, stok: 3 })}
+                >
+                  ⚠️ Rendah (set 3)
+                </button>
+              </div>
+            </div>
+
             <div className="form-group">
               <label>URL Foto</label>
-              <input className="form-input" placeholder="https://..." value={form.foto_url} onChange={(e) => setForm({ ...form, foto_url: e.target.value })} />
+              <input
+                className="form-input"
+                placeholder="https://..."
+                value={form.foto_url}
+                onChange={(e) => setForm({ ...form, foto_url: e.target.value })}
+              />
               <div className="foto-preview">
-                {form.foto_url ? <img src={form.foto_url} alt="preview" /> : <span className="no-img">🖼️</span>}
+                {form.foto_url
+                  ? <img src={form.foto_url} alt="preview" onError={(e) => { e.target.style.display = "none"; }} />
+                  : <span className="no-img">🖼️</span>}
               </div>
             </div>
+
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setShowModal(false)}>Batal</button>
-              <button className="save-btn" onClick={handleSave} disabled={saving}>{saving ? "Menyimpan..." : editing ? "Simpan Perubahan" : "Tambah Menu"}</button>
+              <button className="save-btn" onClick={handleSave} disabled={saving}>
+                {saving ? "Menyimpan..." : editing ? "Simpan Perubahan" : "Tambah Menu"}
+              </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* ── Modal Logout ── */}
       {showLogoutModal && (
         <div className="seller-modal-overlay" onClick={() => setShowLogoutModal(false)}>
           <div className="seller-modal" onClick={(e) => e.stopPropagation()}>
