@@ -4,6 +4,8 @@ const { pool } = require('../db');
 
 // 1. POST Proses Pembayaran Baru 
 router.post('/process', async (req, res) => {
+    console.log("PAYMENT MASUK:", req.body);
+
     const { order_id, jumlah } = req.body;
     const conn = await pool.getConnection();
     try {
