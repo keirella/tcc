@@ -103,8 +103,15 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
         <div className="login-left">
           <div className="login-left-content">
             <span className="login-illus">🍽️</span>
-            <div className="login-left-title">Kantin Digital<br />UPN Veteran</div>
-            <div className="login-left-sub">Pesan makanan dari berbagai stan kantin, bayar sekali, tanpa antre panjang.</div>
+            <div className="login-left-title">
+              Kantin Digital
+              <br />
+              UPN Veteran
+            </div>
+            <div className="login-left-sub">
+              Pesan makanan dari berbagai stan kantin, bayar sekali, tanpa antre
+              panjang.
+            </div>
             <div className="login-left-tags">
               <span className="login-tag">🍛 Multi Stan</span>
               <span className="login-tag">💳 1x Bayar</span>
@@ -117,16 +124,32 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
           <div className="login-right-inner">
             <div className="login-brand">
               <span className="login-brand-icon">🍽️</span>
-              <span className="login-brand-name">KantinKu</span>
+              <span className="login-brand-name">Kantin Digital</span>
             </div>
             <div className="login-title">Masuk</div>
-            <div className="login-sub">Pilih role dan masukkan kredensialmu</div>
+            <div className="login-sub">
+              Pilih role dan masukkan kredensialmu
+            </div>
 
             <div className="role-toggle">
-              <button className={`role-btn ${role === "buyer" ? "active" : ""}`} onClick={() => { setRole("buyer"); setError(""); }} type="button">
+              <button
+                className={`role-btn ${role === "buyer" ? "active" : ""}`}
+                onClick={() => {
+                  setRole("buyer");
+                  setError("");
+                }}
+                type="button"
+              >
                 🛒 Pembeli
               </button>
-              <button className={`role-btn ${role === "seller" ? "active" : ""}`} onClick={() => { setRole("seller"); setError(""); }} type="button">
+              <button
+                className={`role-btn ${role === "seller" ? "active" : ""}`}
+                onClick={() => {
+                  setRole("seller");
+                  setError("");
+                }}
+                type="button"
+              >
                 🏪 Penjual
               </button>
             </div>
@@ -137,34 +160,74 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
               {role === "buyer" ? (
                 <div className="form-group">
                   <label className="form-label">Email</label>
-                  <input className="form-input" type="email" placeholder="contoh@email.com" value={email} onChange={e => setEmail(e.target.value)} required />
+                  <input
+                    className="form-input"
+                    type="email"
+                    placeholder="contoh@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
                 </div>
               ) : (
                 <div className="form-group">
                   <label className="form-label">Kode Unik Stan</label>
-                  <input className="form-input" type="text" placeholder="Contoh: STAN001" value={kodeUnik} onChange={e => setKodeUnik(e.target.value.toUpperCase())} required />
-                  <div className="input-hint">Kode unik diberikan oleh pengelola kantin</div>
+                  <input
+                    className="form-input"
+                    type="text"
+                    placeholder="Contoh: STAN001"
+                    value={kodeUnik}
+                    onChange={(e) => setKodeUnik(e.target.value.toUpperCase())}
+                    required
+                  />
+                  <div className="input-hint">
+                    Kode unik diberikan oleh pengelola kantin
+                  </div>
                 </div>
               )}
 
               <div className="form-group">
                 <label className="form-label">Password</label>
                 <div className="input-wrap">
-                  <input className="form-input" type={showPass ? "text" : "password"} placeholder="Masukkan password" value={password} onChange={e => setPassword(e.target.value)} required style={{ paddingRight: 44 }} />
-                  <button type="button" className="input-eye" onClick={() => setShowPass(p => !p)}>
+                  <input
+                    className="form-input"
+                    type={showPass ? "text" : "password"}
+                    placeholder="Masukkan password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    style={{ paddingRight: 44 }}
+                  />
+                  <button
+                    type="button"
+                    className="input-eye"
+                    onClick={() => setShowPass((p) => !p)}
+                  >
                     {showPass ? "🙈" : "👁️"}
                   </button>
                 </div>
               </div>
 
               <button className="submit-btn" type="submit" disabled={loading}>
-                {loading ? <span className="spinner" /> : `Masuk sebagai ${role === "buyer" ? "Pembeli" : "Penjual"}`}
+                {loading ? (
+                  <span className="spinner" />
+                ) : (
+                  `Masuk sebagai ${role === "buyer" ? "Pembeli" : "Penjual"}`
+                )}
               </button>
             </form>
 
             {role === "buyer" && (
               <div className="login-footer">
-                Belum punya akun? <a onClick={onGoToRegister}>Daftar sekarang</a>
+                Belum punya akun?{" "}
+                <a
+                  onClick={() => {
+                    console.log("REGISTER DIKLIK");
+                    onGoToRegister();
+                  }}
+                >
+                  Daftar sekarang
+                </a>
               </div>
             )}
             {role === "seller" && (

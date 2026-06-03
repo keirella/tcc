@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { logout, getSavedUser } from './services/api';
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
-import Home from './pages/buyer/Home';
-import Cart from './pages/buyer/Cart';
-import OrderStatus from './pages/buyer/OrderStatus';
-import History from './pages/buyer/History';
-import Dashboard from './pages/seller/Dashboard';
-import Menu from './pages/seller/Menu';
-import Orders from './pages/seller/Orders';
+import React, { useState, useEffect } from "react";
+import { logout, getSavedUser } from "./services/api";
+import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
+import Home from "./pages/buyer/Home";
+import Cart from "./pages/buyer/Cart";
+import OrderStatus from "./pages/buyer/OrderStatus";
+import History from "./pages/buyer/History";
+import Dashboard from "./pages/seller/Dashboard";
+import Menu from "./pages/seller/Menu";
+import Orders from "./pages/seller/Orders";
 
 function App() {
   const [cart, setCart] = useState({});
@@ -18,7 +18,11 @@ function App() {
   // Supaya refresh tidak balik ke login
   const [user, setUser] = useState(() => getSavedUser());
 
-  const go = (target) => setPage(target);
+  // const go = (target) => setPage(target);
+  const go = (target) => {
+    console.log("GO TO:", target);
+    setPage(target);
+  };
 
   // Saat mount — kalau sudah ada user (dari localStorage), langsung ke halaman yang sesuai
   useEffect(() => {
@@ -62,49 +66,75 @@ function App() {
     cart,
     setCart,
     user,
-    onGoToHome:    () => go("home"),
-    onGoToCart:    () => go("cart"),
-    onGoToStatus:  () => go("status"),
+    onGoToHome: () => go("home"),
+    onGoToCart: () => go("cart"),
+    onGoToStatus: () => go("status"),
     onGoToHistory: () => go("history"),
-    onLogout:      handleLogout,
+    onLogout: handleLogout,
   };
 
   const sellerProps = {
     user,
     onNavigate: (key) => {
-      if (key === "logout") { handleLogout(); return; }
+      if (key === "logout") {
+        handleLogout();
+        return;
+      }
       go(key);
     },
   };
 
   // ── Auth ─────────────────────────────────────────────────────
-  if (!user || page === "login") {
-    return <Login onLoginSuccess={handleLoginSuccess} onGoToRegister={() => go("register")} />;
-  }
   if (page === "register") {
-    return <Register onRegisterSuccess={handleLoginSuccess} onGoToLogin={() => go("login")} />;
-  }
+  return (
+    <Register
+      onRegisterSuccess={handleLoginSuccess}
+      onGoToLogin={() => go("login")}
+    />
+  );
+}
+
+if (!user || page === "login") {
+  return (
+    <Login
+      onLoginSuccess={handleLoginSuccess}
+      onGoToRegister={() => go("register")}
+    />
+  );
+}
 
   // ── Buyer ─────────────────────────────────────────────────────
   if (user?.role === "buyer") {
     switch (page) {
-      case "cart":    return <Cart        {...buyerProps} onBack={() => go("home")} />;
-      case "status":  return <OrderStatus {...buyerProps} />;
-      case "history": return <History     {...buyerProps} />;
-      default:        return <Home        {...buyerProps} />;
+      case "cart":
+        return <Cart {...buyerProps} onBack={() => go("home")} />;
+      case "status":
+        return <OrderStatus {...buyerProps} />;
+      case "history":
+        return <History {...buyerProps} />;
+      default:
+        return <Home {...buyerProps} />;
     }
   }
 
   // ── Seller ─────────────────────────────────────────────────────
   if (user?.role === "seller") {
     switch (page) {
-      case "menu":    return <Menu      {...sellerProps} />;
-      case "orders":  return <Orders    {...sellerProps} />;
-      default:        return <Dashboard {...sellerProps} />;
+      case "menu":
+        return <Menu {...sellerProps} />;
+      case "orders":
+        return <Orders {...sellerProps} />;
+      default:
+        return <Dashboard {...sellerProps} />;
     }
   }
 
-  return <Login onLoginSuccess={handleLoginSuccess} onGoToRegister={() => go("register")} />;
+  return (
+    <Login
+      onLoginSuccess={handleLoginSuccess}
+      onGoToRegister={() => go("register")}
+    />
+  );
 }
 
 export default App;
