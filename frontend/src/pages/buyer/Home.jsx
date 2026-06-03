@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
-import { getMenus, getStalls, getOrders, getOrderById } from "../../services/api";
-import { requestNotifPermission, listenForegroundNotif } from "../../services/firebaseNotif";
+import {
+  getMenus,
+  getStalls,
+  getOrders,
+  getOrderById,
+} from "../../services/api";
+import {
+  requestNotifPermission,
+  listenForegroundNotif,
+} from "../../services/firebaseNotif";
 import { fmtRelative } from "../../utils/dateUtils";
 import { USER, STATUS_CONFIG } from "../../data/DummyData";
 
@@ -12,11 +20,16 @@ const statusLabel = Object.fromEntries(
 );
 const fmt = (n) => "Rp " + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 const STALL_EMOJIS = { 1: "🍛", 2: "🍗", 3: "🧃", 4: "🍜", 5: "🥤" };
-const FALLBACK_IMG = "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80";
+const FALLBACK_IMG =
+  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80";
 
 const COLORS = {
-  primary: "#ffffff", secondary: "#D3968C", accent: "#c07060",
-  bg_light: "#F7F4D5", text_dark: "#105666", white: "#ffffff",
+  primary: "#ffffff",
+  secondary: "#D3968C",
+  accent: "#c07060",
+  bg_light: "#F7F4D5",
+  text_dark: "#105666",
+  white: "#ffffff",
   overlay: "rgba(16,86,102,0.4)",
 };
 
@@ -175,7 +188,15 @@ const css = `
   }
 `;
 
-export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHistory, onLogout, user }) {
+export default function Home({
+  cart,
+  setCart,
+  onGoToCart,
+  onGoToStatus,
+  onGoToHistory,
+  onLogout,
+  user,
+}) {
   const [stalls, setStalls] = useState([]);
   const [allMenus, setAllMenus] = useState([]);
   const [popularMenus, setPopularMenus] = useState([]);
@@ -186,12 +207,16 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   // Load notifs dari localStorage supaya tidak hilang saat pindah halaman
+  const getNotifKey = (userId) => `notifs_${userId}`;
   const [notifs, setNotifs] = useState(() => {
     try {
-      const saved = localStorage.getItem("notifs");
+      const saved = localStorage.getItem(getNotifKey(user?.id));
       return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
+    } catch {
+      return [];
+    }
   });
+
   const [toastNotif, setToastNotif] = useState(null); // popup dari atas
 
   // Pesanan aktif dari API — kosong dulu sampai data datang
@@ -201,18 +226,22 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [dataMenus, dataStalls] = await Promise.all([getMenus(), getStalls()]);
+        const [dataMenus, dataStalls] = await Promise.all([
+          getMenus(),
+          getStalls(),
+        ]);
 
-        const menusWithStall = dataMenus.map(m => ({
+        const menusWithStall = dataMenus.map((m) => ({
           ...m,
-          stall_name: dataStalls.find(s => s.id === m.stall_id)?.nama_stan || "Stan",
+          stall_name:
+            dataStalls.find((s) => s.id === m.stall_id)?.nama_stan || "Stan",
         }));
 
-        const formattedStalls = dataStalls.map(s => ({
+        const formattedStalls = dataStalls.map((s) => ({
           id: s.id,
           name: s.nama_stan,
           emoji: STALL_EMOJIS[s.id] || "🍽️",
-          count: dataMenus.filter(m => m.stall_id === s.id).length,
+          count: dataMenus.filter((m) => m.stall_id === s.id).length,
         }));
 
         setAllMenus(menusWithStall);
@@ -245,10 +274,15 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
           time: new Date().toISOString(), // simpan ISO, format saat render
           read: false,
         };
-        setNotifs(prev => {
+        setNotifs((prev) => {
           const updated = [newNotif, ...prev].slice(0, 20);
           // Persist ke localStorage supaya tidak hilang saat pindah halaman
-          try { localStorage.setItem("notifs", JSON.stringify(updated)); } catch {}
+          try {
+            localStorage.setItem(
+              getNotifKey(user?.id),
+              JSON.stringify(updated)
+            );
+          } catch {}
           return updated;
         });
         // Tampilkan toast popup dari atas
@@ -269,13 +303,19 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
 
         // DEBUG: log untuk cek format buyer_id dari BE
         if (allOrders.length > 0) {
-          console.log("[DEBUG] Sample order buyer_id:", allOrders[0].buyer_id, "| user.id:", buyerId);
+          console.log(
+            "[DEBUG] Sample order buyer_id:",
+            allOrders[0].buyer_id,
+            "| user.id:",
+            buyerId
+          );
         }
 
         // Filter by buyer_id — handle kalau BE kirim number atau string
-        const mine = allOrders.filter(o =>
-          ACTIVE_STATUSES.includes(o.status) &&
-          (buyerId ? String(o.buyer_id) === String(buyerId) : false)
+        const mine = allOrders.filter(
+          (o) =>
+            ACTIVE_STATUSES.includes(o.status) &&
+            (buyerId ? String(o.buyer_id) === String(buyerId) : false)
         );
 
         // Simpan total count untuk badge — sebelum di-slice
@@ -290,14 +330,15 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
         // Fetch detail tiap order untuk dapat nama item
         // Sidebar panel batasi 5 supaya tidak spam BE
         const details = await Promise.allSettled(
-          mine.slice(0, 5).map(o => getOrderById(o.id))
+          mine.slice(0, 5).map((o) => getOrderById(o.id))
         );
 
         const active = mine.slice(0, 5).map((o, i) => {
-          const detail = details[i].status === "fulfilled" ? details[i].value : null;
+          const detail =
+            details[i].status === "fulfilled" ? details[i].value : null;
           const items = detail?.items || [];
           const itemsText = items
-            .map(item => item.nama ? `${item.nama} ×${item.qty}` : null)
+            .map((item) => (item.nama ? `${item.nama} ×${item.qty}` : null))
             .filter(Boolean)
             .join(", ");
           return {
@@ -318,22 +359,31 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
     loadActiveOrders();
   }, [user]);
 
-  const filtered = allMenus.filter(m => {
+  const filtered = allMenus.filter((m) => {
     const stallOk = activeStall ? m.stall_id === activeStall : true;
     const searchOk = m.nama.toLowerCase().includes(search.toLowerCase());
     return stallOk && searchOk;
   });
 
-  const addToCart = (menu) => setCart(p => ({ ...p, [menu.id]: { ...menu, qty: (p[menu.id]?.qty || 0) + 1 } }));
-  const removeFromCart = (menu) => setCart(p => {
-    const n = { ...p };
-    if (n[menu.id]?.qty > 1) n[menu.id] = { ...n[menu.id], qty: n[menu.id].qty - 1 };
-    else delete n[menu.id];
-    return n;
-  });
+  const addToCart = (menu) =>
+    setCart((p) => ({
+      ...p,
+      [menu.id]: { ...menu, qty: (p[menu.id]?.qty || 0) + 1 },
+    }));
+  const removeFromCart = (menu) =>
+    setCart((p) => {
+      const n = { ...p };
+      if (n[menu.id]?.qty > 1)
+        n[menu.id] = { ...n[menu.id], qty: n[menu.id].qty - 1 };
+      else delete n[menu.id];
+      return n;
+    });
 
   const totalItems = Object.values(cart).reduce((a, b) => a + b.qty, 0);
-  const totalPrice = Object.values(cart).reduce((a, b) => a + b.harga * b.qty, 0);
+  const totalPrice = Object.values(cart).reduce(
+    (a, b) => a + b.harga * b.qty,
+    0
+  );
   const showPopular = !search && !activeStall;
   const displayName = user?.name || USER.name;
 
@@ -341,18 +391,33 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
     <>
       <style>{css}</style>
       <div className="app">
-        <div className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} />
-        {showNotifPanel && <div style={{ position: "fixed", inset: 0, zIndex: 150 }} onClick={() => setShowNotifPanel(false)} />}
+        <div
+          className={`sidebar-overlay ${sidebarOpen ? "open" : ""}`}
+          onClick={() => setSidebarOpen(false)}
+        />
+        {showNotifPanel && (
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 150 }}
+            onClick={() => setShowNotifPanel(false)}
+          />
+        )}
 
         {/* Toast notif popup dari atas kanan */}
         {toastNotif && (
           <div className="notif-toast">
             <span className="notif-toast-icon">🔔</span>
             <div>
-              {toastNotif.title && <div className="notif-toast-title">{toastNotif.title}</div>}
+              {toastNotif.title && (
+                <div className="notif-toast-title">{toastNotif.title}</div>
+              )}
               <div className="notif-toast-body">{toastNotif.body}</div>
             </div>
-            <button className="notif-toast-close" onClick={() => setToastNotif(null)}>✕</button>
+            <button
+              className="notif-toast-close"
+              onClick={() => setToastNotif(null)}
+            >
+              ✕
+            </button>
           </div>
         )}
 
@@ -366,18 +431,43 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
           </div>
           <div className="sidebar-content-wrapper">
             <nav className="sidebar-nav">
-              <button className="nav-item active" onClick={() => setSidebarOpen(false)}>
+              <button
+                className="nav-item active"
+                onClick={() => setSidebarOpen(false)}
+              >
                 <span className="nav-item-icon">🏠</span> Menu
               </button>
-              <button className="nav-item" onClick={() => { onGoToCart(); setSidebarOpen(false); }}>
+              <button
+                className="nav-item"
+                onClick={() => {
+                  onGoToCart();
+                  setSidebarOpen(false);
+                }}
+              >
                 <span className="nav-item-icon">🛒</span> Keranjang
-                {totalItems > 0 && <span className="nav-badge">{totalItems}</span>}
+                {totalItems > 0 && (
+                  <span className="nav-badge">{totalItems}</span>
+                )}
               </button>
-              <button className="nav-item" onClick={() => { onGoToStatus(); setSidebarOpen(false); }}>
+              <button
+                className="nav-item"
+                onClick={() => {
+                  onGoToStatus();
+                  setSidebarOpen(false);
+                }}
+              >
                 <span className="nav-item-icon">📋</span> Status Pesanan
-                {activeOrderCount > 0 && <span className="nav-badge">{activeOrderCount}</span>}
+                {activeOrderCount > 0 && (
+                  <span className="nav-badge">{activeOrderCount}</span>
+                )}
               </button>
-              <button className="nav-item" onClick={() => { onGoToHistory(); setSidebarOpen(false); }}>
+              <button
+                className="nav-item"
+                onClick={() => {
+                  onGoToHistory();
+                  setSidebarOpen(false);
+                }}
+              >
                 <span className="nav-item-icon">🕐</span> Riwayat
               </button>
             </nav>
@@ -386,10 +476,12 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
             {activeOrders.length > 0 && (
               <div className="active-order-panel">
                 <div className="aop-title">⚡ Pesanan Aktif</div>
-                {activeOrders.map(o => (
+                {activeOrders.map((o) => (
                   <div className="aop-item" key={o.id}>
                     <div className="aop-items-text">{o.items}</div>
-                    <span className="aop-status">{statusLabel[o.status] || o.status}</span>
+                    <span className="aop-status">
+                      {statusLabel[o.status] || o.status}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -407,7 +499,10 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
                 <div className="user-email">{user?.email || USER.email}</div>
               </div>
             </div>
-            <button className="logout-btn" onClick={() => setShowLogoutModal(true)}>
+            <button
+              className="logout-btn"
+              onClick={() => setShowLogoutModal(true)}
+            >
               <span>🚪</span> Keluar
             </button>
           </div>
@@ -416,50 +511,84 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
         <div className="main-content">
           <div className="topbar">
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <button className="hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
-              <span className="topbar-title">Selamat Datang, {displayName.split(" ")[0]}! 👋</span>
+              <button
+                className="hamburger"
+                onClick={() => setSidebarOpen(true)}
+              >
+                ☰
+              </button>
+              <span className="topbar-title">
+                Selamat Datang, {displayName.split(" ")[0]}! 👋
+              </span>
             </div>
             <div className="topbar-right">
               <div style={{ position: "relative" }}>
                 <button
-                  className={`notif-topbar-btn ${notifs.length > 0 ? "has-notif" : ""}`}
+                  className={`notif-topbar-btn ${
+                    notifs.length > 0 ? "has-notif" : ""
+                  }`}
                   onClick={() => {
-                  setShowNotifPanel(p => {
-                    const next = !p;
-                    if (next) {
-                      // Tandai semua sudah dibaca saat panel dibuka
-                      setNotifs(prev => {
-                        const updated = prev.map(n => ({ ...n, read: true }));
-                        try { localStorage.setItem("notifs", JSON.stringify(updated)); } catch {}
-                        return updated;
-                      });
-                    }
-                    return next;
-                  });
-                }}
+                    setShowNotifPanel((p) => {
+                      const next = !p;
+                      if (next) {
+                        // Tandai semua sudah dibaca saat panel dibuka
+                        setNotifs((prev) => {
+                          const updated = prev.map((n) => ({
+                            ...n,
+                            read: true,
+                          }));
+                          try {
+                            localStorage.setItem(
+                              getNotifKey(user?.id),
+                              JSON.stringify(updated)
+                            );
+                          } catch {}
+                          return updated;
+                        });
+                      }
+                      return next;
+                    });
+                  }}
                   title="Notifikasi"
                 >
                   🔔
-                  {notifs.filter(n => !n.read).length > 0 && (
-                    <span className="notif-count">{notifs.filter(n => !n.read).length}</span>
+                  {notifs.filter((n) => !n.read).length > 0 && (
+                    <span className="notif-count">
+                      {notifs.filter((n) => !n.read).length}
+                    </span>
                   )}
                 </button>
                 {showNotifPanel && (
                   <div className="notif-panel-popup">
                     <div className="notif-panel-hdr">
                       <span className="notif-panel-title">🔔 Notifikasi</span>
-                      <button className="notif-panel-close" onClick={() => setShowNotifPanel(false)}>✕</button>
+                      <button
+                        className="notif-panel-close"
+                        onClick={() => setShowNotifPanel(false)}
+                      >
+                        ✕
+                      </button>
                     </div>
                     <div className="notif-list">
                       {notifs.length === 0 ? (
                         <div className="notif-empty">Belum ada notifikasi</div>
                       ) : (
                         notifs.map((n, i) => (
-                          <div key={i} className={`notif-row ${n.read ? "" : "unread"}`}>
-                            <div className={`notif-dot ${n.read ? "read" : ""}`} />
+                          <div
+                            key={i}
+                            className={`notif-row ${n.read ? "" : "unread"}`}
+                          >
+                            <div
+                              className={`notif-dot ${n.read ? "read" : ""}`}
+                            />
                             <div>
-                              <div className="notif-row-msg">{n.title && <strong>{n.title} — </strong>}{n.body}</div>
-                              <div className="notif-row-time">{fmtRelative(n.time)}</div>
+                              <div className="notif-row-msg">
+                                {n.title && <strong>{n.title} — </strong>}
+                                {n.body}
+                              </div>
+                              <div className="notif-row-time">
+                                {fmtRelative(n.time)}
+                              </div>
                             </div>
                           </div>
                         ))
@@ -470,21 +599,25 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
               </div>
               <button className="cart-topbar-btn" onClick={onGoToCart}>
                 🛒 <span className="cart-text">Keranjang</span>
-                {totalItems > 0 && <span className="cart-topbar-badge">{totalItems}</span>}
+                {totalItems > 0 && (
+                  <span className="cart-topbar-badge">{totalItems}</span>
+                )}
               </button>
             </div>
           </div>
 
           <div className="hero">
             <div className="hero-sub">Mau makan apa hari ini?</div>
-            <div className="hero-title">Pesan dari berbagai stan, bayar sekali. 🎉</div>
+            <div className="hero-title">
+              Pesan dari berbagai stan, bayar sekali. 🎉
+            </div>
             <div className="hero-search-wrap">
               <span className="hero-search-ico">🔍</span>
               <input
                 className="hero-search-input"
                 placeholder="Cari makanan atau minuman..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={(e) => setSearch(e.target.value)}
               />
             </div>
           </div>
@@ -492,13 +625,22 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
           <div className="page-body">
             {/* STALL CHIPS */}
             <div className="chip-row">
-              <div className={`chip ${!activeStall ? "active" : ""}`} onClick={() => setActiveStall(null)}>
+              <div
+                className={`chip ${!activeStall ? "active" : ""}`}
+                onClick={() => setActiveStall(null)}
+              >
                 <span className="chip-emo">🍽️</span>
                 <span className="chip-name">Semua Stan</span>
                 <span className="chip-ct">{allMenus.length}</span>
               </div>
-              {stalls.map(s => (
-                <div key={s.id} className={`chip ${activeStall === s.id ? "active" : ""}`} onClick={() => setActiveStall(activeStall === s.id ? null : s.id)}>
+              {stalls.map((s) => (
+                <div
+                  key={s.id}
+                  className={`chip ${activeStall === s.id ? "active" : ""}`}
+                  onClick={() =>
+                    setActiveStall(activeStall === s.id ? null : s.id)
+                  }
+                >
                   <span className="chip-emo">{s.emoji}</span>
                   <span className="chip-name">{s.name}</span>
                   <span className="chip-ct">{s.count}</span>
@@ -514,10 +656,17 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
                   <button className="sec-link">Lihat semua</button>
                 </div>
                 <div className="pop-row">
-                  {popularMenus.map(m => (
+                  {popularMenus.map((m) => (
                     <div key={m.id} className="pop-wrap">
                       <div className="pop-card">
-                        <img src={m.foto_url || FALLBACK_IMG} alt={m.nama} className="pop-img" onError={e => { e.target.src = FALLBACK_IMG; }} />
+                        <img
+                          src={m.foto_url || FALLBACK_IMG}
+                          alt={m.nama}
+                          className="pop-img"
+                          onError={(e) => {
+                            e.target.src = FALLBACK_IMG;
+                          }}
+                        />
                         <div className="pop-body">
                           <div className="pop-stall">{m.stall_name}</div>
                           <div className="pop-name">{m.nama}</div>
@@ -534,22 +683,38 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
             {/* MENU GRID */}
             <div className="sec-hd">
               <span className="sec-title">
-                {search ? `Hasil "${search}"` : activeStall ? stalls.find(s => s.id === activeStall)?.name : "Semua Menu"}
+                {search
+                  ? `Hasil "${search}"`
+                  : activeStall
+                  ? stalls.find((s) => s.id === activeStall)?.name
+                  : "Semua Menu"}
               </span>
-              <span style={{ fontSize: 14, color: "#D3968C", fontWeight: 500 }}>{filtered.length} item</span>
+              <span style={{ fontSize: 14, color: "#D3968C", fontWeight: 500 }}>
+                {filtered.length} item
+              </span>
             </div>
 
             {loading ? (
               <div className="loading-txt">⏳ Memuat menu...</div>
             ) : filtered.length === 0 ? (
-              <div className="empty"><div className="empty-emo">🍽️</div><div className="empty-txt">Menu tidak ditemukan</div></div>
+              <div className="empty">
+                <div className="empty-emo">🍽️</div>
+                <div className="empty-txt">Menu tidak ditemukan</div>
+              </div>
             ) : (
               <div className="mgrid">
-                {filtered.map(m => {
+                {filtered.map((m) => {
                   const qty = cart[m.id]?.qty || 0;
                   return (
                     <div key={m.id} className="mcard">
-                      <img src={m.foto_url || FALLBACK_IMG} alt={m.nama} className="mcard-img" onError={e => { e.target.src = FALLBACK_IMG; }} />
+                      <img
+                        src={m.foto_url || FALLBACK_IMG}
+                        alt={m.nama}
+                        className="mcard-img"
+                        onError={(e) => {
+                          e.target.src = FALLBACK_IMG;
+                        }}
+                      />
                       <div className="mcard-body">
                         <div className="mcard-stall">{m.stall_name}</div>
                         <div className="mcard-name">{m.nama}</div>
@@ -558,12 +723,27 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
                           <div className="habis">Stok habis</div>
                         ) : qty > 0 ? (
                           <div className="qty-ctrl">
-                            <button className="qty-btn" onClick={() => removeFromCart(m)}>−</button>
+                            <button
+                              className="qty-btn"
+                              onClick={() => removeFromCart(m)}
+                            >
+                              −
+                            </button>
                             <span className="qty-num">{qty}</span>
-                            <button className="qty-btn" onClick={() => addToCart(m)}>+</button>
+                            <button
+                              className="qty-btn"
+                              onClick={() => addToCart(m)}
+                            >
+                              +
+                            </button>
                           </div>
                         ) : (
-                          <button className="add-btn" onClick={() => addToCart(m)}>+ Tambah</button>
+                          <button
+                            className="add-btn"
+                            onClick={() => addToCart(m)}
+                          >
+                            + Tambah
+                          </button>
                         )}
                       </div>
                     </div>
@@ -587,14 +767,34 @@ export default function Home({ cart, setCart, onGoToCart, onGoToStatus, onGoToHi
         )}
 
         {showLogoutModal && (
-          <div className="modal-overlay" onClick={() => setShowLogoutModal(false)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
+          <div
+            className="modal-overlay"
+            onClick={() => setShowLogoutModal(false)}
+          >
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-icon">🚪</div>
               <div className="modal-title">Keluar dari akun?</div>
-              <div className="modal-sub">Kamu akan keluar dari Kantin Digital.<br />Keranjang yang belum checkout akan hilang.</div>
+              <div className="modal-sub">
+                Kamu akan keluar dari Kantin Digital.
+                <br />
+                Keranjang yang belum checkout akan hilang.
+              </div>
               <div className="modal-btns">
-                <button className="modal-cancel" onClick={() => setShowLogoutModal(false)}>Batal</button>
-                <button className="modal-confirm-logout" onClick={() => { setShowLogoutModal(false); onLogout(); }}>Ya, Keluar</button>
+                <button
+                  className="modal-cancel"
+                  onClick={() => setShowLogoutModal(false)}
+                >
+                  Batal
+                </button>
+                <button
+                  className="modal-confirm-logout"
+                  onClick={() => {
+                    setShowLogoutModal(false);
+                    onLogout();
+                  }}
+                >
+                  Ya, Keluar
+                </button>
               </div>
             </div>
           </div>
