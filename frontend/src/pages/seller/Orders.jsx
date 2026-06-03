@@ -211,6 +211,7 @@ function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = []
           </div>
         ))}
       </div>
+      <div style={{ flex: 1 }} />
       <div className="sb-user-card">
         <div className="sb-avatar">{(user?.name || "S")[0]}</div>
         <div>
@@ -225,13 +226,15 @@ function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = []
 
 const ordersStyles = `
   .orders-root { font-family: 'Poppins', sans-serif; background-color: ${COLORS.beige}; min-height: 100vh; color: ${COLORS.darkGreen}; display: flex; }
-  .orders-main { margin-left: 240px; padding: 36px 40px; min-height: 100vh; flex: 1; }
-  .orders-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; }
-  .orders-header h1 { font-size: 26px; font-weight: 800; margin: 0 0 4px; }
+  .orders-main { margin-left: 240px; padding: 0; min-height: 100vh; flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .orders-content { padding: clamp(16px, 3vw, 28px) clamp(16px, 3vw, 40px) clamp(24px, 3vw, 40px); flex: 1; }
+  .orders-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+  .orders-header h1 { font-size: clamp(18px, 2.2vw, 26px); font-weight: 800; margin: 0 0 4px; }
   .orders-header p  { font-size: 13px; color: ${COLORS.mossGreen}; margin: 0; font-weight: 500; }
-  .export-btn { background: white; color: ${COLORS.darkGreen}; border: 2px solid rgba(10,51,35,0.12); padding: 11px 20px; border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
-  .export-btn:hover { border-color: ${COLORS.mossGreen}; color: ${COLORS.mossGreen}; }
-  .stat-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 24px; }
+  .export-btn { background: white; color: ${COLORS.darkGreen}; border: 2px solid rgba(10,51,35,0.12); padding: 11px 20px; border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
+  .export-btn:hover { border-color: ${COLORS.mossGreen}; color: ${COLORS.mossGreen}; background: rgba(131,153,88,0.06); }
+  .export-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 24px; }
   .strip-card { background: white; border-radius: 14px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; box-shadow: 0 2px 10px rgba(10,51,35,0.05); }
   .strip-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
   .strip-value { font-size: 20px; font-weight: 800; color: ${COLORS.darkGreen}; line-height: 1.2; }
@@ -308,6 +311,95 @@ const ordersStyles = `
   .drawer-action-btn.primary:hover { background: ${COLORS.darkGreen}; color: ${COLORS.beige}; }
   .drawer-action-btn.secondary { background: rgba(211,150,140,0.15); color: ${COLORS.rosyBrown}; }
   .drawer-action-btn.secondary:hover { background: ${COLORS.rosyBrown}; color: white; }
+
+  /* ── TOPBAR ──────────────────────────────────────────────────── */
+  .orders-topbar {
+    background: white;
+    padding: 0 clamp(16px, 3vw, 40px);
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(131,153,88,0.12);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 1px 4px rgba(10,51,35,0.06);
+    flex-shrink: 0;
+  }
+  .orders-topbar-title { font-size: 17px; font-weight: 700; color: #0A3323; }
+  .orders-topbar-right { display: flex; align-items: center; gap: 12px; }
+  .seller-notif-btn {
+    position: relative; display: flex; align-items: center; justify-content: center;
+    background: rgba(131,153,88,0.12); color: #0A3323;
+    border: none; border-radius: 12px; width: 42px; height: 42px;
+    font-size: 18px; cursor: pointer; font-family: 'Poppins', sans-serif; transition: background 0.2s;
+  }
+  .seller-notif-btn:hover { background: rgba(131,153,88,0.22); }
+  .seller-notif-btn.has-notif { background: rgba(211,150,140,0.18); }
+  .seller-notif-count {
+    position: absolute; top: 4px; right: 4px; background: #D3968C; color: white;
+    font-size: 9px; font-weight: 700; min-width: 16px; height: 16px;
+    border-radius: 99px; display: flex; align-items: center; justify-content: center; padding: 0 3px;
+  }
+  .seller-notif-panel {
+    position: absolute; top: 54px; right: 0; width: 320px;
+    background: white; border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(10,51,35,0.15); z-index: 200; overflow: hidden;
+  }
+  .seller-notif-hdr { padding: 16px 18px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(131,153,88,0.12); }
+  .seller-notif-hdr-title { font-size: 15px; font-weight: 700; color: #0A3323; }
+  .seller-notif-hdr-close { background: none; border: none; font-size: 18px; cursor: pointer; color: rgba(10,51,35,0.4); padding: 2px 6px; border-radius: 6px; font-family: 'Poppins', sans-serif; }
+  .seller-notif-hdr-close:hover { background: rgba(131,153,88,0.1); }
+  .seller-notif-list { max-height: 340px; overflow-y: auto; }
+  .seller-notif-row { display: flex; gap: 12px; padding: 13px 18px; border-bottom: 1px solid rgba(131,153,88,0.07); align-items: flex-start; transition: background 0.15s; }
+  .seller-notif-row:last-child { border-bottom: none; }
+  .seller-notif-row.unread { background: rgba(131,153,88,0.05); }
+  .seller-notif-row:hover { background: rgba(131,153,88,0.08); }
+  .seller-notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #D3968C; flex-shrink: 0; margin-top: 5px; }
+  .seller-notif-dot.read { background: rgba(10,51,35,0.2); }
+  .seller-notif-msg { font-size: 13px; color: #0A3323; line-height: 1.45; font-weight: 500; margin-bottom: 3px; }
+  .seller-notif-time { font-size: 11px; color: rgba(10,51,35,0.4); }
+  .seller-notif-empty { padding: 32px 18px; text-align: center; font-size: 13px; color: rgba(10,51,35,0.4); }
+  .seller-notif-toast {
+    position: fixed; top: 80px; right: 24px; z-index: 999; max-width: 340px;
+    background: white; border-radius: 16px; box-shadow: 0 8px 32px rgba(10,51,35,0.18);
+    padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px;
+    border-left: 4px solid #839958;
+  }
+  .seller-notif-toast-icon { font-size: 22px; flex-shrink: 0; }
+  .seller-notif-toast-title { font-size: 13px; font-weight: 700; color: #0A3323; margin-bottom: 3px; }
+  .seller-notif-toast-body { font-size: 12px; color: rgba(10,51,35,0.65); line-height: 1.4; }
+  .seller-notif-toast-close { margin-left: auto; background: none; border: none; font-size: 16px; cursor: pointer; color: rgba(10,51,35,0.3); flex-shrink: 0; padding: 0 4px; }
+  .seller-notif-toast-close:hover { color: #0A3323; }
+
+  /* ── Responsive breakpoints ── */
+  @media (max-width: 1100px) {
+    .seller-sidebar { width: 200px; }
+    .orders-main { margin-left: 200px; }
+    .stat-strip { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  }
+  @media (max-width: 860px) {
+    .seller-sidebar { width: 64px; overflow: hidden; }
+    .seller-sidebar .sb-logo h2,
+    .seller-sidebar .sb-logo span,
+    .seller-sidebar .sb-nav-item span:not(.nav-icon):not(.nav-badge),
+    .seller-sidebar .sb-section,
+    .seller-sidebar .sb-user-card p,
+    .seller-sidebar .sb-logout span { display: none; }
+    .seller-sidebar .sb-logo { padding: 16px 12px; justify-content: center; }
+    .seller-sidebar .sb-nav { padding: 10px 8px; }
+    .seller-sidebar .sb-nav-item { padding: 12px; justify-content: center; }
+    .seller-sidebar .sb-user-card { padding: 10px; justify-content: center; }
+    .seller-sidebar .sb-logout { padding: 10px; justify-content: center; width: calc(100% - 16px); }
+    .orders-main { margin-left: 64px; }
+  }
+  @media (max-width: 600px) {
+    .seller-sidebar { display: none; }
+    .orders-main { margin-left: 0; }
+    .stat-strip { grid-template-columns: repeat(2, 1fr); }
+    .filter-toolbar { gap: 6px; }
+  }
 `;
 
 const ADVANCE_LABEL = {
@@ -332,6 +424,192 @@ const TAB_LABEL = {
   cooking: "🍳 Dimasak", ready: "🎉 Siap", cancelled: "❌ Batal",
 };
 
+const STATUS_LABEL_TEXT = {
+  pending: "Menunggu",
+  paid: "Terkonfirmasi",
+  cooking: "Dimasak",
+  ready: "Siap Diambil",
+  cancelled: "Dibatalkan",
+};
+
+// ── PDF Export ────────────────────────────────────────────────────
+async function exportOrdersToPDF(orders, sellerName) {
+  // Load jsPDF dari CDN secara dinamis
+  if (!window.jspdf) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 16;
+  const col = {
+    id:     margin,
+    buyer:  margin + 18,
+    date:   margin + 52,
+    status: margin + 98,
+    total:  margin + 138,
+  };
+
+  // ── Header ──
+  doc.setFillColor(10, 51, 35); // darkGreen
+  doc.rect(0, 0, pageW, 36, "F");
+
+  doc.setTextColor(247, 244, 213); // beige
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text("KANTIN DIGITAL", margin, 16);
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text("Laporan Penjualan — Seller Portal", margin, 23);
+
+  const now = new Date();
+  doc.text(
+    `Dicetak: ${now.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })} pukul ${now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}`,
+    pageW - margin,
+    16,
+    { align: "right" }
+  );
+  doc.text(`Seller: ${sellerName || "–"}`, pageW - margin, 23, { align: "right" });
+
+  // ── Summary Box ──
+  let y = 46;
+  const totalPendapatan = orders
+    .filter(o => o.status !== "cancelled")
+    .reduce((a, o) => a + Number(o.total), 0);
+  const jumlahPesanan = orders.length;
+  const selesai = orders.filter(o => o.status === "ready").length;
+  const dibatalkan = orders.filter(o => o.status === "cancelled").length;
+
+  const summaryBoxH = 26;
+  doc.setFillColor(245, 242, 220);
+  doc.roundedRect(margin, y, pageW - margin * 2, summaryBoxH, 4, 4, "F");
+
+  const summaryItems = [
+    { label: "Total Pesanan", value: String(jumlahPesanan) },
+    { label: "Selesai",       value: String(selesai) },
+    { label: "Dibatalkan",    value: String(dibatalkan) },
+    { label: "Total Pendapatan", value: formatRupiah(totalPendapatan) },
+  ];
+  const colW = (pageW - margin * 2) / summaryItems.length;
+
+  summaryItems.forEach((item, i) => {
+    const x = margin + colW * i + colW / 2;
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120, 120, 100);
+    doc.text(item.label.toUpperCase(), x, y + 8, { align: "center" });
+
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(10, 51, 35);
+    doc.text(item.value, x, y + 18, { align: "center" });
+  });
+
+  y += summaryBoxH + 10;
+
+  // ── Table Header ──
+  doc.setFillColor(10, 51, 35);
+  doc.rect(margin, y, pageW - margin * 2, 9, "F");
+  doc.setTextColor(247, 244, 213);
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.text("ID",       col.id + 2,    y + 6);
+  doc.text("BUYER ID", col.buyer + 2, y + 6);
+  doc.text("TANGGAL",  col.date + 2,  y + 6);
+  doc.text("STATUS",   col.status + 2,y + 6);
+  doc.text("TOTAL",    col.total + 2, y + 6);
+  y += 9;
+
+  // ── Table Rows ──
+  const rowH = 8;
+  orders.forEach((o, idx) => {
+    if (y + rowH > pageH - 20) {
+      doc.addPage();
+      y = 20;
+      // mini header on new page
+      doc.setFillColor(10, 51, 35);
+      doc.rect(margin, y - 9, pageW - margin * 2, 9, "F");
+      doc.setTextColor(247, 244, 213);
+      doc.setFontSize(7.5);
+      doc.setFont("helvetica", "bold");
+      doc.text("ID",       col.id + 2,    y);
+      doc.text("BUYER ID", col.buyer + 2, y);
+      doc.text("TANGGAL",  col.date + 2,  y);
+      doc.text("STATUS",   col.status + 2,y);
+      doc.text("TOTAL",    col.total + 2, y);
+      y += 0;
+    }
+
+    // zebra stripe
+    if (idx % 2 === 0) {
+      doc.setFillColor(252, 250, 240);
+      doc.rect(margin, y, pageW - margin * 2, rowH, "F");
+    }
+
+    doc.setTextColor(10, 51, 35);
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "bold");
+    doc.text(`#${String(o.id).padStart(3, "0")}`, col.id + 2, y + 5.5);
+
+    doc.setFont("helvetica", "normal");
+    doc.text(`#${o.buyer_id}`, col.buyer + 2, y + 5.5);
+    const tgl = o.created_at
+      ? new Date(o.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })
+      : "-";
+    doc.text(tgl, col.date + 2, y + 5.5);
+
+    const statusText = STATUS_LABEL_TEXT[o.status] || o.status;
+    // status color dot
+    const statusColors = {
+      pending:   [245, 158, 11],
+      paid:      [59, 130, 246],
+      cooking:   [211, 150, 140],
+      ready:     [16, 185, 129],
+      cancelled: [239, 68, 68],
+    };
+    const sc = statusColors[o.status] || [150, 150, 150];
+    doc.setFillColor(sc[0], sc[1], sc[2]);
+    doc.circle(col.status + 3, y + 4.5, 1.5, "F");
+    doc.setTextColor(sc[0], sc[1], sc[2]);
+    doc.text(statusText, col.status + 7, y + 5.5);
+
+    doc.setTextColor(10, 51, 35);
+    doc.setFont("helvetica", "bold");
+    doc.text(formatRupiah(o.total), col.total + 2, y + 5.5);
+
+    // row border bottom
+    doc.setDrawColor(235, 232, 220);
+    doc.line(margin, y + rowH, pageW - margin, y + rowH);
+
+    y += rowH;
+  });
+
+  // ── Footer ──
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(180, 180, 160);
+  doc.text(
+    `Kantin Digital © ${now.getFullYear()} — Dokumen ini dibuat otomatis`,
+    pageW / 2,
+    pageH - 8,
+    { align: "center" }
+  );
+
+  // ── Save ──
+  const fileName = `Laporan-Penjualan-${now.toISOString().slice(0, 10)}.pdf`;
+  doc.save(fileName);
+}
+
 export default function Orders({ onNavigate }) {
   const [orders, setOrders]           = useState([]);
   const [tab, setTab]                 = useState("all");
@@ -340,8 +618,24 @@ export default function Orders({ onNavigate }) {
   const [activeNav, setActiveNav]     = useState("orders");
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [exporting, setExporting]     = useState(false);
 
   const user = getSavedUser();
+
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [notifs, setNotifs] = useState(() => {
+    try { const s = localStorage.getItem("seller_notifs"); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const [toastNotif, setToastNotif] = useState(null);
+  const unreadCount = notifs.filter(n => !n.read).length;
+
+  const fmtRelative = (iso) => {
+    const diff = Date.now() - new Date(iso).getTime();
+    if (diff < 60000) return "Baru saja";
+    if (diff < 3600000) return Math.floor(diff / 60000) + " mnt lalu";
+    if (diff < 86400000) return Math.floor(diff / 3600000) + " jam lalu";
+    return Math.floor(diff / 86400000) + " hari lalu";
+  };
 
   useEffect(() => {
     async function loadOrders() {
@@ -355,10 +649,45 @@ export default function Orders({ onNavigate }) {
     loadOrders();
   }, []);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    let unsub = () => {};
+    (async () => {
+      const { requestNotifPermission, listenForegroundNotif } = await import("../../services/firebaseNotif");
+      await requestNotifPermission();
+      unsub = listenForegroundNotif(({ title, body, data }) => {
+        const n = { title, body, data, time: new Date().toISOString(), read: false };
+        setNotifs(prev => {
+          const upd = [n, ...prev].slice(0, 30);
+          try { localStorage.setItem("seller_notifs", JSON.stringify(upd)); } catch {}
+          return upd;
+        });
+        setToastNotif(n);
+        setTimeout(() => setToastNotif(null), 6000);
+      });
+    })().catch(console.warn);
+    return () => unsub();
+  }, [user?.id]);
+
   const handleNav = (key) => {
     setActiveNav(key);
     if (key === "logout") { logout(); }
     if (onNavigate) onNavigate(key);
+  };
+
+  const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      await exportOrdersToPDF(orders, user?.name);
+    } catch (err) {
+      console.error("Export PDF gagal:", err);
+      alert("Gagal export PDF: " + err.message);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const liveOrders    = orders.filter((o) => ["pending", "paid", "cooking"].includes(o.status));
@@ -381,7 +710,6 @@ export default function Orders({ onNavigate }) {
     return matchTab && matchSearch;
   });
 
-  // Klik Detail → load items dari API
   const handleDetail = async (o) => {
     setLoadingDetail(true);
     setSelected(o);
@@ -433,98 +761,171 @@ export default function Orders({ onNavigate }) {
       />
 
       <main className="orders-main">
-        <div className="orders-header">
-          <div>
-            <h1>Pesanan Masuk 📋</h1>
-            <p>{user?.name || "Seller"} · {orders.length} total pesanan</p>
+
+        {/* Toast notif seller */}
+        {toastNotif && (
+          <div className="seller-notif-toast">
+            <span className="seller-notif-toast-icon">🔔</span>
+            <div>
+              {toastNotif.title && <div className="seller-notif-toast-title">{toastNotif.title}</div>}
+              <div className="seller-notif-toast-body">{toastNotif.body}</div>
+            </div>
+            <button className="seller-notif-toast-close" onClick={() => setToastNotif(null)}>✕</button>
           </div>
-          <button className="export-btn">📤 Export</button>
+        )}
+
+        {/* ── Topbar ── */}
+        <div className="orders-topbar">
+          <span className="orders-topbar-title">Pesanan Masuk 📋</span>
+          <div className="orders-topbar-right">
+            {showNotifPanel && (
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 150 }}
+                onClick={() => setShowNotifPanel(false)}
+              />
+            )}
+            <div style={{ position: "relative" }}>
+              <button
+                className={`seller-notif-btn${unreadCount > 0 ? " has-notif" : ""}`}
+                title="Notifikasi"
+                onClick={() => setShowNotifPanel(p => {
+                  if (!p) setNotifs(prev => {
+                    const upd = prev.map(n => ({ ...n, read: true }));
+                    try { localStorage.setItem("seller_notifs", JSON.stringify(upd)); } catch {}
+                    return upd;
+                  });
+                  return !p;
+                })}
+              >
+                🔔
+                {unreadCount > 0 && <span className="seller-notif-count">{unreadCount}</span>}
+              </button>
+              {showNotifPanel && (
+                <div className="seller-notif-panel">
+                  <div className="seller-notif-hdr">
+                    <span className="seller-notif-hdr-title">🔔 Notifikasi</span>
+                    <button className="seller-notif-hdr-close" onClick={() => setShowNotifPanel(false)}>✕</button>
+                  </div>
+                  <div className="seller-notif-list">
+                    {notifs.length === 0 ? (
+                      <div className="seller-notif-empty">Belum ada notifikasi</div>
+                    ) : notifs.map((n, i) => (
+                      <div key={i} className={`seller-notif-row${n.read ? "" : " unread"}`}>
+                        <div className={`seller-notif-dot${n.read ? " read" : ""}`} />
+                        <div>
+                          <div className="seller-notif-msg">{n.title && <strong>{n.title} — </strong>}{n.body}</div>
+                          <div className="seller-notif-time">{fmtRelative(n.time)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="stat-strip">
-          {stats.map((s) => (
-            <div key={s.key} className="strip-card">
-              <div className="strip-icon" style={{ background: s.bg }}>{s.icon}</div>
-              <div>
-                <div className="strip-value" style={{ color: s.color }}>{s.count}</div>
-                <div className="strip-label">{s.label}</div>
+        {/* ── Main Content ── */}
+        <div className="orders-content">
+          <div className="orders-header">
+            <div>
+              <h1>Pesanan Masuk 📋</h1>
+              <p>{user?.name || "Seller"} · {orders.length} total pesanan</p>
+            </div>
+            <button
+              className="export-btn"
+              onClick={handleExport}
+              disabled={exporting || orders.length === 0}
+            >
+              {exporting ? "⏳ Mengexport..." : "📤 Export PDF"}
+            </button>
+          </div>
+
+          <div className="stat-strip">
+            {stats.map((s) => (
+              <div key={s.key} className="strip-card">
+                <div className="strip-icon" style={{ background: s.bg }}>{s.icon}</div>
+                <div>
+                  <div className="strip-value" style={{ color: s.color }}>{s.count}</div>
+                  <div className="strip-label">{s.label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="filter-toolbar">
+            <input
+              className="search-input"
+              placeholder="🔍 Cari ID pesanan atau buyer..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {TAB_LIST.map((t) => (
+              <button
+                key={t}
+                className={`tab-btn${tab === t ? ` active ${t}` : ""}`}
+                onClick={() => setTab(t)}
+              >
+                {TAB_LABEL[t]}
+              </button>
+            ))}
+          </div>
+
+          <div className="orders-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>Buyer ID</th><th>Total</th>
+                  <th>Tanggal</th><th>Status</th><th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan={6}>
+                    <div className="empty-state">
+                      <div className="emoji">📭</div>
+                      <h3>Tidak ada pesanan</h3>
+                      <p>Belum ada pesanan untuk filter ini</p>
+                    </div>
+                  </td></tr>
+                ) : filtered.map((o) => (
+                  <tr key={o.id}>
+                    <td className="order-id-cell">#{String(o.id).padStart(3, "0")}</td>
+                    <td>
+                      <div className="buyer-name">#{o.buyer_id}</div>
+                      <div className="buyer-sub">{o.created_at ? new Date(o.created_at).toLocaleDateString("id-ID") : "-"}</div>
+                    </td>
+                    <td className="amount-cell">{formatRupiah(o.total)}</td>
+                    <td className="date-cell">{o.created_at ? new Date(o.created_at).toLocaleString("id-ID") : "-"}</td>
+                    <td>
+                      <span className={`status-badge ${o.status}`}>
+                        {STATUS_CONFIG[o.status]?.icon} {STATUS_CONFIG[o.status]?.label}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <button className="action-btn view" onClick={() => handleDetail(o)}>Detail</button>
+                        {STATUS_FLOW[o.status] && (
+                          <button className="action-btn advance" onClick={() => advanceStatus(o.id)}>
+                            {ADVANCE_LABEL[o.status]}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="pagination">
+              <span className="page-info">Menampilkan {filtered.length} dari {orders.length} pesanan</span>
+              <div className="page-btns">
+                <button className="page-btn">‹</button>
+                <button className="page-btn active">1</button>
+                <button className="page-btn">›</button>
               </div>
             </div>
-          ))}
-        </div>
-
-        <div className="filter-toolbar">
-          <input
-            className="search-input"
-            placeholder="🔍 Cari ID pesanan..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {TAB_LIST.map((t) => (
-            <button
-              key={t}
-              className={`tab-btn${tab === t ? ` active ${t}` : ""}`}
-              onClick={() => setTab(t)}
-            >
-              {TAB_LABEL[t]}
-            </button>
-          ))}
-        </div>
-
-        <div className="orders-table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th><th>Buyer ID</th><th>Total</th>
-                <th>Tanggal</th><th>Status</th><th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr><td colSpan={6}>
-                  <div className="empty-state">
-                    <div className="emoji">📭</div>
-                    <h3>Tidak ada pesanan</h3>
-                    <p>Belum ada pesanan untuk filter ini</p>
-                  </div>
-                </td></tr>
-              ) : filtered.map((o) => (
-                <tr key={o.id}>
-                  <td className="order-id-cell">#{String(o.id).padStart(3, "0")}</td>
-                  <td>
-                    <div className="buyer-name">#{o.buyer_id}</div>
-                    <div className="buyer-sub">{o.created_at ? new Date(o.created_at).toLocaleDateString("id-ID") : "-"}</div>
-                  </td>
-                  <td className="amount-cell">{formatRupiah(o.total)}</td>
-                  <td className="date-cell">{o.created_at ? new Date(o.created_at).toLocaleString("id-ID") : "-"}</td>
-                  <td>
-                    <span className={`status-badge ${o.status}`}>
-                      {STATUS_CONFIG[o.status]?.icon} {STATUS_CONFIG[o.status]?.label}
-                    </span>
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <button className="action-btn view" onClick={() => handleDetail(o)}>Detail</button>
-                      {STATUS_FLOW[o.status] && (
-                        <button className="action-btn advance" onClick={() => advanceStatus(o.id)}>
-                          {ADVANCE_LABEL[o.status]}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="pagination">
-            <span className="page-info">Menampilkan {filtered.length} dari {orders.length} pesanan</span>
-            <div className="page-btns">
-              <button className="page-btn">‹</button>
-              <button className="page-btn active">1</button>
-              <button className="page-btn">›</button>
-            </div>
           </div>
-        </div>
+        </div>{/* end orders-content */}
       </main>
 
       {/* Detail Drawer */}

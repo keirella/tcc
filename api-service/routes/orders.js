@@ -56,6 +56,38 @@ async function sendOrderNotif(orderId, status) {
         console.warn(`⚠️ Gagal kirim notif order #${orderId}:`, err.message);
     }
 }
+
+// ── Kirim notif ke SELLER saat buyer checkout ─────────────────────
+async function sendNewOrderNotifToSeller(orderId, buyerName, total, stallId) {
+    if (!admin) return;
+    try {
+        // Cari FCM token seller berdasarkan stall_id
+        const [rows] = await pool.query(
+            `SELECT u.fcm_token, u.name AS seller_name
+             FROM stalls s
+             JOIN users u ON s.seller_id = u.id
+             WHERE s.id = ?`,
+            [stallId]
+        );
+        const fcmToken = rows[0]?.fcm_token;
+        if (!fcmToken) {
+            console.log(`[NOTIF-SELLER] Skip stall #${stallId} — seller tidak punya FCM token`);
+            return;
+        }
+        const fmt = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');
+        await admin.messaging().send({
+            token: fcmToken,
+            notification: {
+                title: `🛒 Pesanan Baru Masuk! #${orderId}`,
+                body: `${buyerName || 'Pembeli'} memesan · Total ${fmt(total)}`,
+            },
+            data: { order_id: String(orderId), type: 'new_order', stall_id: String(stallId) },
+        });
+        console.log(`✅ Notif seller terkirim → stall #${stallId} order #${orderId}`);
+    } catch (err) {
+        console.warn(`⚠️ Gagal kirim notif seller stall #${stallId}:`, err.message);
+    }
+}
 // ─────────────────────────────────────────────────────────────────
 
 // 1. POST Buat Pesanan Baru
@@ -94,6 +126,13 @@ router.post('/', async (req, res) => {
         for (const stallId in stallOrders) {
             const orderKey = datastore.key(['orders', `${orderId}_${stallId}`]);
             await datastore.save({ key: orderKey, data: stallOrders[stallId] });
+        }
+
+        // Kirim notifikasi ke setiap seller yang terlibat dalam order ini
+        const [buyerRows] = await pool.query('SELECT name FROM users WHERE id = ?', [buyer_id]);
+        const buyerName = buyerRows[0]?.name || 'Pembeli';
+        for (const stallId in stallOrders) {
+            sendNewOrderNotifToSeller(orderId, buyerName, total, parseInt(stallId)).catch(() => {});
         }
 
         res.status(201).json({ message: "Order berhasil masuk!", orderId });

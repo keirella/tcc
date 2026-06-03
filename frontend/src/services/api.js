@@ -216,11 +216,8 @@ export async function checkoutCart(cart, buyerId) {
     throw err;
   }
 
-  // Kurangi stok tiap menu yang dibeli setelah payment sukses
-  const cartItems = Object.values(cart);
-  await Promise.allSettled(
-    cartItems.map(item => reduceMenuStock(item.id, item.qty))
-  );
+  // Stok dikurangi otomatis oleh BE di payments.js saat proses payment
+  // Tidak perlu reduceMenuStock di sini supaya tidak dobel
 
   return { orderId, total };
 }
