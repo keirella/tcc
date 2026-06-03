@@ -1,7 +1,6 @@
 // ── api.js ────────────────────────────────────────────────────────
 // Taruh di: src/services/api.js
 // ─────────────────────────────────────────────────────────────────
-
 const BASE_URL_AUTH = "https://auth-service-194342266835.us-central1.run.app/";
 const BASE_URL_API  = "https://api-service-194342266835.us-central1.run.app/";
 
@@ -86,6 +85,10 @@ export async function getStallById(stallId) {
   return request(BASE_URL_API, `/api/stalls/${stallId}`);
 }
 
+export async function getMyStall() {
+  return request(BASE_URL_API, "/api/stalls/mine");
+}
+
 export async function createStall(stallData) {
   return request(BASE_URL_API, "/api/stalls", {
     method: "POST",
@@ -143,8 +146,13 @@ export async function getEarnings(stallId) {
 
 // ── ORDERS ────────────────────────────────────────────────────────
 
-export async function getOrders() {
-  return request(BASE_URL_API, "/api/orders");
+// export async function getOrders() {
+//   return request(BASE_URL_API, "/api/orders");
+// }
+
+export async function getOrders(stallId) {
+  const query = stallId ? `?stall_id=${stallId}` : "";
+  return request(BASE_URL_API, `/api/orders${query}`);
 }
 
 // Dipakai untuk lazy-load detail items saat kartu order dibuka

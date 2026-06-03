@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import {
   getSavedUser,
-  getStallById,
+  // getStallById,
+  getMyStall,
   getOrders,
   getMenus,
   getStallEarnings,
@@ -149,16 +150,27 @@ const sidebarStyles = `
 
 const navItems = [
   { icon: "📊", label: "Dashboard", key: "dashboard" },
-  { icon: "🍽️", label: "Menu",      key: "menu" },
-  { icon: "📋", label: "Pesanan",   key: "orders" },
+  { icon: "🍽️", label: "Menu", key: "menu" },
+  { icon: "📋", label: "Pesanan", key: "orders" },
 ];
 
-function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = [], pendingCount = 0, onLogoutClick, user }) {
+function SellerSidebar({
+  active,
+  onNavigate,
+  liveOrders = [],
+  notifications = [],
+  pendingCount = 0,
+  onLogoutClick,
+  user,
+}) {
   return (
     <aside className="seller-sidebar">
       <div className="sb-logo">
         <div className="sb-logo-icon">🍽️</div>
-        <div><h2>Kantin Digital</h2><span>Seller Portal</span></div>
+        <div>
+          <h2>Kantin Digital</h2>
+          <span>Seller Portal</span>
+        </div>
       </div>
       <nav className="sb-nav">
         {navItems.map((item) => (
@@ -176,31 +188,40 @@ function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = []
         ))}
       </nav>
       <div className="sb-section">
-        <div className="sb-section-title"><span className="dot" />⚡ PESANAN AKTIF</div>
+        <div className="sb-section-title">
+          <span className="dot" />⚡ PESANAN AKTIF
+        </div>
         {liveOrders.length === 0 ? (
           <p className="sb-empty-section">Belum ada pesanan aktif</p>
-        ) : liveOrders.slice(0, 3).map((o) => (
-          <div key={o.id} className="sb-order-item">
-            <div className="sb-order-name">#{o.id} · {o.items?.[0]?.nama || "..."}{o.items?.length > 1 ? ` +${o.items.length - 1}` : ""}</div>
-            <span className={`sb-order-status ${o.status}`}>
-              {STATUS_CONFIG[o.status]?.icon} {STATUS_CONFIG[o.status]?.label}
-            </span>
-          </div>
-        ))}
+        ) : (
+          liveOrders.slice(0, 3).map((o) => (
+            <div key={o.id} className="sb-order-item">
+              <div className="sb-order-name">
+                #{o.id} · {o.items?.[0]?.nama || "..."}
+                {o.items?.length > 1 ? ` +${o.items.length - 1}` : ""}
+              </div>
+              <span className={`sb-order-status ${o.status}`}>
+                {STATUS_CONFIG[o.status]?.icon} {STATUS_CONFIG[o.status]?.label}
+              </span>
+            </div>
+          ))
+        )}
       </div>
       <div className="sb-section">
         <div className="sb-notif-title">🔔 NOTIFIKASI</div>
         {notifications.length === 0 ? (
           <p className="sb-empty-section">Tidak ada notifikasi baru</p>
-        ) : notifications.slice(0, 3).map((n, i) => (
-          <div key={i} className="sb-notif-item">
-            <span className={`sb-notif-dot ${n.isNew ? "new" : "read"}`} />
-            <div>
-              <div className="sb-notif-text">{n.text}</div>
-              <div className="sb-notif-time">{n.time}</div>
+        ) : (
+          notifications.slice(0, 3).map((n, i) => (
+            <div key={i} className="sb-notif-item">
+              <span className={`sb-notif-dot ${n.isNew ? "new" : "read"}`} />
+              <div>
+                <div className="sb-notif-text">{n.text}</div>
+                <div className="sb-notif-time">{n.time}</div>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
       <div className="sb-user-card">
         <div className="sb-avatar">{(user?.name || "S")[0]}</div>
@@ -209,7 +230,9 @@ function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = []
           <p className="sb-user-code">{user?.email || ""}</p>
         </div>
       </div>
-      <button className="sb-logout" onClick={onLogoutClick}>🚪 Keluar</button>
+      <button className="sb-logout" onClick={onLogoutClick}>
+        🚪 Keluar
+      </button>
     </aside>
   );
 }
@@ -323,17 +346,43 @@ const dashStyles = `
   .seller-notif-toast-close:hover { color: #0A3323; }
 `;
 
-function formatRupiah(v) { return "Rp " + Number(v).toLocaleString("id-ID"); }
+function formatRupiah(v) {
+  return "Rp " + Number(v).toLocaleString("id-ID");
+}
 
 function buildDashboardStats(orders, menus, stall, earnings) {
   const totalPesanan = orders.length;
-  const menuAktif    = menus.length;
-  const stokRendah   = menus.filter((m) => m.stok < 5).length;
+  const menuAktif = menus.length;
+  const stokRendah = menus.filter((m) => m.stok < 5).length;
   return [
-    { label: "Total Pendapatan", value: formatRupiah(earnings),  icon: "💰", change: "dari pesanan selesai", variant: "green" },
-    { label: "Total Pesanan",    value: String(totalPesanan),     icon: "🛒", change: `${orders.filter(o => o.status !== "cancelled").length} aktif`, variant: "moss" },
-    { label: "Menu Aktif",       value: String(menuAktif),        icon: "🍽️", change: stall?.nama_stan || "-", variant: "midnight" },
-    { label: "Stok Rendah",      value: String(stokRendah),       icon: "⚠️", change: stokRendah > 0 ? "Perlu restock" : "Semua aman", variant: "rosy" },
+    {
+      label: "Total Pendapatan",
+      value: formatRupiah(earnings),
+      icon: "💰",
+      change: "dari pesanan selesai",
+      variant: "green",
+    },
+    {
+      label: "Total Pesanan",
+      value: String(totalPesanan),
+      icon: "🛒",
+      change: `${orders.filter((o) => o.status !== "cancelled").length} aktif`,
+      variant: "moss",
+    },
+    {
+      label: "Menu Aktif",
+      value: String(menuAktif),
+      icon: "🍽️",
+      change: stall?.nama_stan || "-",
+      variant: "midnight",
+    },
+    {
+      label: "Stok Rendah",
+      value: String(stokRendah),
+      icon: "⚠️",
+      change: stokRendah > 0 ? "Perlu restock" : "Semua aman",
+      variant: "rosy",
+    },
   ];
 }
 
@@ -349,10 +398,15 @@ function buildTopMenus(orders, menus) {
   // Sort semua menu berdasarkan penjualan terbanyak — otomatis update saat ada order baru
   return Object.entries(soldMap)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)  // tampilkan top 5, bisa naik/turun ranking otomatis
+    .slice(0, 5) // tampilkan top 5, bisa naik/turun ranking otomatis
     .map(([nama, sold]) => {
       const menu = menus.find((m) => m.nama === nama);
-      return { name: nama, sold, price: menu ? formatRupiah(menu.harga) : "-", foto_url: menu?.foto_url || "" };
+      return {
+        name: nama,
+        sold,
+        price: menu ? formatRupiah(menu.harga) : "-",
+        foto_url: menu?.foto_url || "",
+      };
     });
 }
 
@@ -360,38 +414,50 @@ function buildSellerNotifs(orders) {
   return orders
     .filter((o) => o.status === "pending" || o.status === "cooking")
     .map((o) => ({
-      text: o.status === "pending"
-        ? `Pesanan #${o.id} masuk`
-        : `Pesanan #${o.id} sedang dimasak`,
-      time: o.created_at ? String(o.created_at).split("T")[1]?.slice(0, 5) || "" : "",
+      text:
+        o.status === "pending"
+          ? `Pesanan #${o.id} masuk`
+          : `Pesanan #${o.id} sedang dimasak`,
+      time: o.created_at
+        ? String(o.created_at).split("T")[1]?.slice(0, 5) || ""
+        : "",
       isNew: o.status === "pending",
     }));
 }
 
 const weekData = [
-  { day: "Sen", val: 60 }, { day: "Sel", val: 80 }, { day: "Rab", val: 45 },
-  { day: "Kam", val: 90 }, { day: "Jum", val: 70 }, { day: "Sab", val: 100 },
+  { day: "Sen", val: 60 },
+  { day: "Sel", val: 80 },
+  { day: "Rab", val: 45 },
+  { day: "Kam", val: 90 },
+  { day: "Jum", val: 70 },
+  { day: "Sab", val: 100 },
   { day: "Min", val: 55 },
 ];
 
 export default function Dashboard({ onNavigate }) {
-  const [activeNav, setActiveNav]           = useState("dashboard");
+  const [activeNav, setActiveNav] = useState("dashboard");
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [orders, setOrders]                 = useState([]);
-  const [menus, setMenus]                   = useState([]);
-  const [stall, setStall]                   = useState(null);
-  const [earnings, setEarnings]             = useState(0);
-  const [loading, setLoading]               = useState(true);
+  const [orders, setOrders] = useState([]);
+  const [menus, setMenus] = useState([]);
+  const [stall, setStall] = useState(null);
+  const [earnings, setEarnings] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  const user    = getSavedUser();
-  const stallId = user?.stall_id || 1;
+  const user = getSavedUser();
+  console.log("USER LOGIN:", user);
 
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [notifs, setNotifs] = useState(() => {
-    try { const s = localStorage.getItem("seller_notifs"); return s ? JSON.parse(s) : []; } catch { return []; }
+    try {
+      const s = localStorage.getItem("seller_notifs");
+      return s ? JSON.parse(s) : [];
+    } catch {
+      return [];
+    }
   });
   const [toastNotif, setToastNotif] = useState(null);
-  const unreadCount = notifs.filter(n => !n.read).length;
+  const unreadCount = notifs.filter((n) => !n.read).length;
   const fmtRelative = (iso) => {
     const diff = Date.now() - new Date(iso).getTime();
     if (diff < 60000) return "Baru saja";
@@ -399,21 +465,47 @@ export default function Dashboard({ onNavigate }) {
     if (diff < 86400000) return Math.floor(diff / 3600000) + " jam lalu";
     return Math.floor(diff / 86400000) + " hari lalu";
   };
-  const maxVal  = Math.max(...weekData.map((d) => d.val));
+  const maxVal = Math.max(...weekData.map((d) => d.val));
+
+  // useEffect(() => {
+  //   async function loadData() {
+  //     try {
+  //       setLoading(true);
+  //       const [allOrders, allMenus, stallData, earningData] = await Promise.all([
+  //         getOrders(),
+  //         getMenus(),
+  //         getStallById(stallId),
+  //         getStallEarnings(stallId),
+  //       ]);
+  //       setOrders(allOrders);
+  //       setMenus(allMenus.filter((m) => m.stall_id === stallId));
+  //       setStall(stallData);
+  //       setEarnings(earningData.total_earnings || 0);
+  //     } catch (err) {
+  //       console.error("Gagal load data dashboard:", err);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   }
+  //   loadData();
+  // }, [stallId]);
 
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
-        const [allOrders, allMenus, stallData, earningData] = await Promise.all([
-          getOrders(),
+        // Fetch stall milik seller ini dulu
+        const stallData = await getMyStall();
+        const stallId = stallData.id;
+        setStall(stallData);
+
+        const [allOrders, allMenus, earningData] = await Promise.all([
+          getOrders(stallId),
           getMenus(),
-          getStallById(stallId),
           getStallEarnings(stallId),
         ]);
         setOrders(allOrders);
         setMenus(allMenus.filter((m) => m.stall_id === stallId));
-        setStall(stallData);
         setEarnings(earningData.total_earnings || 0);
       } catch (err) {
         console.error("Gagal load data dashboard:", err);
@@ -422,8 +514,7 @@ export default function Dashboard({ onNavigate }) {
       }
     }
     loadData();
-  }, [stallId]);
-
+  }, []);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -431,13 +522,23 @@ export default function Dashboard({ onNavigate }) {
     if (!token) return;
     let unsub = () => {};
     (async () => {
-      const { requestNotifPermission, listenForegroundNotif } = await import("../../services/firebaseNotif");
+      const { requestNotifPermission, listenForegroundNotif } = await import(
+        "../../services/firebaseNotif"
+      );
       await requestNotifPermission();
       unsub = listenForegroundNotif(({ title, body, data }) => {
-        const n = { title, body, data, time: new Date().toISOString(), read: false };
-        setNotifs(prev => {
+        const n = {
+          title,
+          body,
+          data,
+          time: new Date().toISOString(),
+          read: false,
+        };
+        setNotifs((prev) => {
           const upd = [n, ...prev].slice(0, 30);
-          try { localStorage.setItem("seller_notifs", JSON.stringify(upd)); } catch {}
+          try {
+            localStorage.setItem("seller_notifs", JSON.stringify(upd));
+          } catch {}
           return upd;
         });
         setToastNotif(n);
@@ -449,18 +550,27 @@ export default function Dashboard({ onNavigate }) {
 
   const handleNav = (key) => {
     setActiveNav(key);
-    if (key === "logout") { logout(); }
+    if (key === "logout") {
+      logout();
+    }
     if (onNavigate) onNavigate(key);
   };
 
-  const liveOrders   = orders.filter((o) => ["pending", "paid", "cooking"].includes(o.status));
+  const liveOrders = orders.filter((o) =>
+    ["pending", "paid", "cooking"].includes(o.status)
+  );
   const pendingCount = orders.filter((o) => o.status === "pending").length;
   const notifications = buildSellerNotifs(orders);
-  const stats         = buildDashboardStats(orders, menus, stall, earnings);
-  const topMenus      = buildTopMenus(orders, menus);
-  const recentOrders  = [...orders].sort((a, b) => b.id - a.id).slice(0, 3);
+  const stats = buildDashboardStats(orders, menus, stall, earnings);
+  const topMenus = buildTopMenus(orders, menus);
+  const recentOrders = [...orders].sort((a, b) => b.id - a.id).slice(0, 3);
 
-  if (loading) return <div className="dash-loading"><style>{sidebarStyles + dashStyles}</style>Memuat dashboard...</div>;
+  if (loading)
+    return (
+      <div className="dash-loading">
+        <style>{sidebarStyles + dashStyles}</style>Memuat dashboard...
+      </div>
+    );
 
   return (
     <div className="dash-root">
@@ -477,177 +587,340 @@ export default function Dashboard({ onNavigate }) {
       />
 
       <main className="dash-main">
-
-      {/* Toast notif seller */}
-      {toastNotif && (
-        <div className="seller-notif-toast">
-          <span className="seller-notif-toast-icon">🔔</span>
-          <div>
-            {toastNotif.title && <div className="seller-notif-toast-title">{toastNotif.title}</div>}
-            <div className="seller-notif-toast-body">{toastNotif.body}</div>
-          </div>
-          <button className="seller-notif-toast-close" onClick={() => setToastNotif(null)}>✕</button>
-        </div>
-      )}
-
-      <div className="dash-topbar">
-        <span className="dash-topbar-title">Dashboard</span>
-        <div className="dash-topbar-right">
-          {showNotifPanel && <div style={{ position: "fixed", inset: 0, zIndex: 150 }} onClick={() => setShowNotifPanel(false)} />}
-          <div style={{ position: "relative" }}>
+        {/* Toast notif seller */}
+        {toastNotif && (
+          <div className="seller-notif-toast">
+            <span className="seller-notif-toast-icon">🔔</span>
+            <div>
+              {toastNotif.title && (
+                <div className="seller-notif-toast-title">
+                  {toastNotif.title}
+                </div>
+              )}
+              <div className="seller-notif-toast-body">{toastNotif.body}</div>
+            </div>
             <button
-              className={`seller-notif-btn${unreadCount > 0 ? " has-notif" : ""}`}
-              title="Notifikasi"
-              onClick={() => setShowNotifPanel(p => {
-                if (!p) setNotifs(prev => {
-                  const upd = prev.map(n => ({ ...n, read: true }));
-                  try { localStorage.setItem("seller_notifs", JSON.stringify(upd)); } catch {}
-                  return upd;
-                });
-                return !p;
-              })}
+              className="seller-notif-toast-close"
+              onClick={() => setToastNotif(null)}
             >
-              🔔
-              {unreadCount > 0 && <span className="seller-notif-count">{unreadCount}</span>}
+              ✕
             </button>
+          </div>
+        )}
+
+        <div className="dash-topbar">
+          <span className="dash-topbar-title">Dashboard</span>
+          <div className="dash-topbar-right">
             {showNotifPanel && (
-              <div className="seller-notif-panel">
-                <div className="seller-notif-hdr">
-                  <span className="seller-notif-hdr-title">🔔 Notifikasi</span>
-                  <button className="seller-notif-hdr-close" onClick={() => setShowNotifPanel(false)}>✕</button>
-                </div>
-                <div className="seller-notif-list">
-                  {notifs.length === 0 ? (
-                    <div className="seller-notif-empty">Belum ada notifikasi</div>
-                  ) : notifs.map((n, i) => (
-                    <div key={i} className={`seller-notif-row${n.read ? "" : " unread"}`}>
-                      <div className={`seller-notif-dot${n.read ? " read" : ""}`} />
-                      <div>
-                        <div className="seller-notif-msg">{n.title && <strong>{n.title} — </strong>}{n.body}</div>
-                        <div className="seller-notif-time">{fmtRelative(n.time)}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 150 }}
+                onClick={() => setShowNotifPanel(false)}
+              />
             )}
+            <div style={{ position: "relative" }}>
+              <button
+                className={`seller-notif-btn${
+                  unreadCount > 0 ? " has-notif" : ""
+                }`}
+                title="Notifikasi"
+                onClick={() =>
+                  setShowNotifPanel((p) => {
+                    if (!p)
+                      setNotifs((prev) => {
+                        const upd = prev.map((n) => ({ ...n, read: true }));
+                        try {
+                          localStorage.setItem(
+                            "seller_notifs",
+                            JSON.stringify(upd)
+                          );
+                        } catch {}
+                        return upd;
+                      });
+                    return !p;
+                  })
+                }
+              >
+                🔔
+                {unreadCount > 0 && (
+                  <span className="seller-notif-count">{unreadCount}</span>
+                )}
+              </button>
+              {showNotifPanel && (
+                <div className="seller-notif-panel">
+                  <div className="seller-notif-hdr">
+                    <span className="seller-notif-hdr-title">
+                      🔔 Notifikasi
+                    </span>
+                    <button
+                      className="seller-notif-hdr-close"
+                      onClick={() => setShowNotifPanel(false)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="seller-notif-list">
+                    {notifs.length === 0 ? (
+                      <div className="seller-notif-empty">
+                        Belum ada notifikasi
+                      </div>
+                    ) : (
+                      notifs.map((n, i) => (
+                        <div
+                          key={i}
+                          className={`seller-notif-row${
+                            n.read ? "" : " unread"
+                          }`}
+                        >
+                          <div
+                            className={`seller-notif-dot${
+                              n.read ? " read" : ""
+                            }`}
+                          />
+                          <div>
+                            <div className="seller-notif-msg">
+                              {n.title && <strong>{n.title} — </strong>}
+                              {n.body}
+                            </div>
+                            <div className="seller-notif-time">
+                              {fmtRelative(n.time)}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
         <div className="dash-inner">
-        <div className="dash-header" style={{ paddingTop: 28 }}>
-          <div>
-            <h1>Selamat Datang 👋</h1>
-            <p>{stall?.nama_stan || "Stan"} · {user?.email || ""}</p>
-          </div>
-          <div className="dash-date-pill">
-            {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-          </div>
-        </div>
-
-        <div className="dash-stats-grid">
-          {stats.map((s) => (
-            <div key={s.label} className={`stat-card ${s.variant}`}>
-              <div className="stat-icon">{s.icon}</div>
-              <div className="stat-label">{s.label}</div>
-              <div className="stat-value">{s.value}</div>
-              <div className="stat-change">{s.change}</div>
+          <div className="dash-header" style={{ paddingTop: 28 }}>
+            <div>
+              <h1>Selamat Datang 👋</h1>
+              <p>
+                {stall?.nama_stan || "Stan"} · {user?.email || ""}
+              </p>
             </div>
-          ))}
-        </div>
-
-        <div className="dash-bottom-grid">
-          <div className="dash-card">
-            <div className="dash-card-header">
-              <h3>Pesanan Terbaru</h3>
-              <button className="view-all-btn" onClick={() => handleNav("orders")}>Lihat Semua →</button>
+            <div className="dash-date-pill">
+              {new Date().toLocaleDateString("id-ID", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
             </div>
-            {recentOrders.map((o) => (
-              <div key={o.id} className="order-row">
-                <div>
-                  <div className="order-id">#{String(o.id).padStart(3, "0")} · {o.items?.map(i => `${i.nama} ×${i.qty}`).join(", ") || "-"}</div>
-                  <div className="order-name">{o.buyer_id || "Pembeli"}</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div className="order-amount">{formatRupiah(o.total)}</div>
-                  <span className={`status-badge ${o.status}`}>
-                    {STATUS_CONFIG[o.status]?.icon} {STATUS_CONFIG[o.status]?.label}
-                  </span>
-                </div>
+          </div>
+
+          <div className="dash-stats-grid">
+            {stats.map((s) => (
+              <div key={s.label} className={`stat-card ${s.variant}`}>
+                <div className="stat-icon">{s.icon}</div>
+                <div className="stat-label">{s.label}</div>
+                <div className="stat-value">{s.value}</div>
+                <div className="stat-change">{s.change}</div>
               </div>
             ))}
           </div>
 
-          <div className="dash-card">
-            <div className="dash-card-header">
-              <h3>🏆 Menu Terlaris</h3>
-              <button className="view-all-btn" onClick={() => handleNav("menu")}>Kelola Menu →</button>
-            </div>
-            {topMenus.length === 0 ? (
-              <p style={{ color: "#aaa", fontSize: 13 }}>Belum ada data penjualan</p>
-            ) : topMenus.map((m, idx) => {
-              const maxSold = topMenus[0]?.sold || 1;
-              const rankColors = ["#DAA520", "#A0A0A0", "#CD7F32"];
-              const rankEmoji = ["🥇", "🥈", "🥉"];
-              return (
-                <div key={m.name} className="menu-row" style={{ alignItems: "center" }}>
-                  <div style={{ width: 24, textAlign: "center", fontSize: 16, flexShrink: 0 }}>
-                    {idx < 3 ? rankEmoji[idx] : <span style={{ color: "#aaa", fontSize: 12 }}>#{idx+1}</span>}
-                  </div>
-                  <div className="menu-img">
-                    {m.foto_url ? <img src={m.foto_url} alt={m.name} /> : "🍴"}
-                  </div>
-                  <div className="menu-details" style={{ flex: 1, minWidth: 0 }}>
-                    <h4 style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.name}</h4>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                      <div style={{ flex: 1, height: 4, background: "#f0ede0", borderRadius: 99, overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${(m.sold / maxSold) * 100}%`, background: idx === 0 ? COLORS.darkGreen : COLORS.mossGreen, borderRadius: 99, transition: "width 0.6s ease" }} />
-                      </div>
-                      <span style={{ fontSize: 11, color: "#999", whiteSpace: "nowrap" }}>{m.sold} porsi</span>
+          <div className="dash-bottom-grid">
+            <div className="dash-card">
+              <div className="dash-card-header">
+                <h3>Pesanan Terbaru</h3>
+                <button
+                  className="view-all-btn"
+                  onClick={() => handleNav("orders")}
+                >
+                  Lihat Semua →
+                </button>
+              </div>
+              {recentOrders.map((o) => (
+                <div key={o.id} className="order-row">
+                  <div>
+                    <div className="order-id">
+                      #{String(o.id).padStart(3, "0")} ·{" "}
+                      {o.items?.map((i) => `${i.nama} ×${i.qty}`).join(", ") ||
+                        "-"}
                     </div>
+                    <div className="order-name">{o.buyer_id || "Pembeli"}</div>
                   </div>
-                  <div className="menu-price">{m.price}</div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="dash-card" style={{ gridColumn: "1 / -1" }}>
-            <div className="dash-card-header"><h3>Pendapatan Mingguan</h3></div>
-            <div className="bar-chart">
-              {weekData.map((d) => (
-                <div key={d.day} className="bar-wrap">
-                  <div
-                    className="bar"
-                    style={{
-                      height: `${(d.val / maxVal) * 80}px`,
-                      background: d.day === "Sab"
-                        ? COLORS.darkGreen
-                        : `linear-gradient(to top, ${COLORS.mossGreen}, ${COLORS.midnightGreen})`,
-                    }}
-                  />
-                  <span className="bar-label">{d.day}</span>
+                  <div style={{ textAlign: "right" }}>
+                    <div className="order-amount">{formatRupiah(o.total)}</div>
+                    <span className={`status-badge ${o.status}`}>
+                      {STATUS_CONFIG[o.status]?.icon}{" "}
+                      {STATUS_CONFIG[o.status]?.label}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
+
+            <div className="dash-card">
+              <div className="dash-card-header">
+                <h3>🏆 Menu Terlaris</h3>
+                <button
+                  className="view-all-btn"
+                  onClick={() => handleNav("menu")}
+                >
+                  Kelola Menu →
+                </button>
+              </div>
+              {topMenus.length === 0 ? (
+                <p style={{ color: "#aaa", fontSize: 13 }}>
+                  Belum ada data penjualan
+                </p>
+              ) : (
+                topMenus.map((m, idx) => {
+                  const maxSold = topMenus[0]?.sold || 1;
+                  const rankColors = ["#DAA520", "#A0A0A0", "#CD7F32"];
+                  const rankEmoji = ["🥇", "🥈", "🥉"];
+                  return (
+                    <div
+                      key={m.name}
+                      className="menu-row"
+                      style={{ alignItems: "center" }}
+                    >
+                      <div
+                        style={{
+                          width: 24,
+                          textAlign: "center",
+                          fontSize: 16,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {idx < 3 ? (
+                          rankEmoji[idx]
+                        ) : (
+                          <span style={{ color: "#aaa", fontSize: 12 }}>
+                            #{idx + 1}
+                          </span>
+                        )}
+                      </div>
+                      <div className="menu-img">
+                        {m.foto_url ? (
+                          <img src={m.foto_url} alt={m.name} />
+                        ) : (
+                          "🍴"
+                        )}
+                      </div>
+                      <div
+                        className="menu-details"
+                        style={{ flex: 1, minWidth: 0 }}
+                      >
+                        <h4
+                          style={{
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {m.name}
+                        </h4>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            marginTop: 4,
+                          }}
+                        >
+                          <div
+                            style={{
+                              flex: 1,
+                              height: 4,
+                              background: "#f0ede0",
+                              borderRadius: 99,
+                              overflow: "hidden",
+                            }}
+                          >
+                            <div
+                              style={{
+                                height: "100%",
+                                width: `${(m.sold / maxSold) * 100}%`,
+                                background:
+                                  idx === 0
+                                    ? COLORS.darkGreen
+                                    : COLORS.mossGreen,
+                                borderRadius: 99,
+                                transition: "width 0.6s ease",
+                              }}
+                            />
+                          </div>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color: "#999",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {m.sold} porsi
+                          </span>
+                        </div>
+                      </div>
+                      <div className="menu-price">{m.price}</div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="dash-card" style={{ gridColumn: "1 / -1" }}>
+              <div className="dash-card-header">
+                <h3>Pendapatan Mingguan</h3>
+              </div>
+              <div className="bar-chart">
+                {weekData.map((d) => (
+                  <div key={d.day} className="bar-wrap">
+                    <div
+                      className="bar"
+                      style={{
+                        height: `${(d.val / maxVal) * 80}px`,
+                        background:
+                          d.day === "Sab"
+                            ? COLORS.darkGreen
+                            : `linear-gradient(to top, ${COLORS.mossGreen}, ${COLORS.midnightGreen})`,
+                      }}
+                    />
+                    <span className="bar-label">{d.day}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-        </div>{/* end dash-inner */}
+        {/* end dash-inner */}
       </main>
 
       {showLogoutModal && (
-        <div className="seller-modal-overlay" onClick={() => setShowLogoutModal(false)}>
+        <div
+          className="seller-modal-overlay"
+          onClick={() => setShowLogoutModal(false)}
+        >
           <div className="seller-modal" onClick={(e) => e.stopPropagation()}>
             <div className="seller-modal-icon">🚪</div>
             <div className="seller-modal-title">Keluar dari akun?</div>
             <div className="seller-modal-sub">
-              Kamu akan keluar dari Kantin Digital.<br />
+              Kamu akan keluar dari Kantin Digital.
+              <br />
               Pastikan semua pesanan sudah diproses.
             </div>
             <div className="seller-modal-btns">
-              <button className="seller-modal-cancel" onClick={() => setShowLogoutModal(false)}>Batal</button>
-              <button className="seller-modal-confirm-logout" onClick={() => { setShowLogoutModal(false); handleNav("logout"); }}>Ya, Keluar</button>
+              <button
+                className="seller-modal-cancel"
+                onClick={() => setShowLogoutModal(false)}
+              >
+                Batal
+              </button>
+              <button
+                className="seller-modal-confirm-logout"
+                onClick={() => {
+                  setShowLogoutModal(false);
+                  handleNav("logout");
+                }}
+              >
+                Ya, Keluar
+              </button>
             </div>
           </div>
         </div>

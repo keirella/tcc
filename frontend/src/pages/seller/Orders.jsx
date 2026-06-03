@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   getSavedUser,
+  getMyStall,
   getOrders,
   getOrderById,
   updateOrderStatus,
@@ -638,10 +639,23 @@ export default function Orders({ onNavigate }) {
     return Math.floor(diff / 86400000) + " hari lalu";
   };
 
+  // useEffect(() => {
+  //   async function loadOrders() {
+  //     try {
+  //       const data = await getOrders();
+  //       setOrders(data);
+  //     } catch (err) {
+  //       console.error("Gagal load orders:", err);
+  //     }
+  //   }
+  //   loadOrders();
+  // }, []);
+
   useEffect(() => {
     async function loadOrders() {
       try {
-        const data = await getOrders();
+        const stallData = await getMyStall();
+        const data = await getOrders(stallData.id);
         setOrders(data);
       } catch (err) {
         console.error("Gagal load orders:", err);
