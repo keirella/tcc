@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   getSavedUser,
-  getMyStall,
   getOrders,
   getMenus,
   addMenu,
@@ -455,6 +454,7 @@ export default function Menu({ onNavigate }) {
   const [toast, setToast]                     = useState(null); // { msg, type }
 
   const user    = getSavedUser();
+  const stallId = user?.stall_id || 1;
 
   const [showNotifPanel, setShowNotifPanel]   = useState(false);
   const [notifs, setNotifs] = useState(() => {
@@ -478,26 +478,10 @@ export default function Menu({ onNavigate }) {
   }, []);
 
   // ── Load semua data dari API ──
-  // const loadData = useCallback(async () => {
-  //   try {
-  //     setLoadingMenus(true);
-  //     const [allMenus, allOrders] = await Promise.all([getMenus(), getOrders()]);
-  //     setMenus(allMenus.filter((m) => m.stall_id === stallId));
-  //     setOrders(allOrders);
-  //   } catch (err) {
-  //     console.error("Gagal load data menu:", err);
-  //     showToast("Gagal memuat data menu", "error");
-  //   } finally {
-  //     setLoadingMenus(false);
-  //   }
-  // }, [stallId, showToast]);
-
   const loadData = useCallback(async () => {
     try {
       setLoadingMenus(true);
-      const stallData = await getMyStall();       // ← fetch stall dulu
-      const stallId = stallData.id;               // ← ambil id dari sini
-      const [allMenus, allOrders] = await Promise.all([getMenus(), getOrders(stallId)]);
+      const [allMenus, allOrders] = await Promise.all([getMenus(), getOrders()]);
       setMenus(allMenus.filter((m) => m.stall_id === stallId));
       setOrders(allOrders);
     } catch (err) {
@@ -506,30 +490,18 @@ export default function Menu({ onNavigate }) {
     } finally {
       setLoadingMenus(false);
     }
-  }, [showToast]);
+  }, [stallId, showToast]);
 
   // ── Silent refresh untuk polling (tidak trigger loading indicator) ──
-  // const silentRefresh = useCallback(async () => {
-  //   try {
-  //     const [allMenus, allOrders] = await Promise.all([getMenus(), getOrders()]);
-  //     setMenus(allMenus.filter((m) => m.stall_id === stallId));
-  //     setOrders(allOrders);
-  //   } catch (err) {
-  //     console.error("Silent refresh gagal:", err);
-  //   }
-  // }, [stallId]);
-
   const silentRefresh = useCallback(async () => {
     try {
-      const stallData = await getMyStall();
-      const stallId = stallData.id;
-      const [allMenus, allOrders] = await Promise.all([getMenus(), getOrders(stallId)]);
+      const [allMenus, allOrders] = await Promise.all([getMenus(), getOrders()]);
       setMenus(allMenus.filter((m) => m.stall_id === stallId));
       setOrders(allOrders);
     } catch (err) {
       console.error("Silent refresh gagal:", err);
     }
-  }, []);  
+  }, [stallId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -603,13 +575,12 @@ export default function Menu({ onNavigate }) {
     }
     setSaving(true);
     try {
-      const stallData = await getMyStall();
       const payload = {
         nama:     form.nama.trim(),
         harga:    Number(form.harga),
         stok:     Number(form.stok) || 0,
         foto_url: form.foto_url.trim(),
-        stall_id: stallData.id, // dari getMyStall
+        stall_id: stallId,
       };
 
       if (editing) {

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   getSavedUser,
-  getMyStall,
   getOrders,
   getOrderById,
   updateOrderStatus,
@@ -654,8 +653,8 @@ export default function Orders({ onNavigate }) {
   useEffect(() => {
     async function loadOrders() {
       try {
-        const stallData = await getMyStall();
-        const data = await getOrders(stallData.id);
+        const stallId = user?.stall_id;
+        const data = await getOrders(stallId);
         setOrders(data);
       } catch (err) {
         console.error("Gagal load orders:", err);

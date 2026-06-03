@@ -1,6 +1,7 @@
 // ── api.js ────────────────────────────────────────────────────────
 // Taruh di: src/services/api.js
 // ─────────────────────────────────────────────────────────────────
+
 const BASE_URL_AUTH = "https://auth-service-194342266835.us-central1.run.app/";
 const BASE_URL_API  = "https://api-service-194342266835.us-central1.run.app/";
 
@@ -37,6 +38,7 @@ export async function login(email, password) {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
+  console.log("LOGIN RESPONSE:", data);
   if (data.token) {
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
@@ -83,10 +85,6 @@ export async function getStalls() {
 
 export async function getStallById(stallId) {
   return request(BASE_URL_API, `/api/stalls/${stallId}`);
-}
-
-export async function getMyStall() {
-  return request(BASE_URL_API, "/api/stalls/mine");
 }
 
 export async function createStall(stallData) {
@@ -150,6 +148,7 @@ export async function getEarnings(stallId) {
 //   return request(BASE_URL_API, "/api/orders");
 // }
 
+// Ganti getOrders yang lama
 export async function getOrders(stallId) {
   const query = stallId ? `?stall_id=${stallId}` : "";
   return request(BASE_URL_API, `/api/orders${query}`);
