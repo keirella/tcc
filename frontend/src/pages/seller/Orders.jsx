@@ -326,6 +326,7 @@ const ordersStyles = `
     z-index: 50;
     box-shadow: 0 1px 4px rgba(10,51,35,0.06);
     flex-shrink: 0;
+    box-sizing: border-box;
   }
   .orders-topbar-title { font-size: 17px; font-weight: 700; color: #0A3323; }
   .orders-topbar-right { display: flex; align-items: center; gap: 12px; }

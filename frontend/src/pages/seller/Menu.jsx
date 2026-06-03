@@ -22,8 +22,8 @@ const sidebarStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
   .seller-sidebar {
-    width: 240px; background: ${COLORS.darkGreen}; min-height: 100vh;
-    position: sticky; top: 0; align-self: flex-start;
+    width: 240px; background: ${COLORS.darkGreen};
+    position: fixed; left: 0; top: 0; bottom: 0;
     display: flex; flex-direction: column; z-index: 10;
     font-family: 'Poppins', sans-serif; overflow-y: auto; height: 100vh;
   }
@@ -226,7 +226,8 @@ function SellerSidebar({ active, onNavigate, liveOrders = [], notifications = []
 
 const menuStyles = `
   .menu-root { font-family: 'Poppins', sans-serif; background-color: ${COLORS.beige}; min-height: 100vh; color: ${COLORS.darkGreen}; display: flex; }
-  .menu-main { flex: 1; min-width: 0; padding: clamp(16px, 3vw, 36px) clamp(16px, 3vw, 40px); min-height: 100vh; box-sizing: border-box; overflow-x: hidden; }
+  .menu-main { margin-left: 240px; flex: 1; min-width: 0; padding: 0; min-height: 100vh; box-sizing: border-box; overflow-x: hidden; display: flex; flex-direction: column; }
+  .menu-inner { padding: clamp(16px, 3vw, 36px) clamp(16px, 3vw, 40px); flex: 1; }
   .menu-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; }
   .menu-header h1 { font-size: 26px; font-weight: 800; margin: 0 0 4px; }
   .menu-header p  { font-size: 13px; color: ${COLORS.mossGreen}; margin: 0; font-weight: 500; }
@@ -365,7 +366,7 @@ const menuStyles = `
     box-shadow: 0 8px 32px rgba(10,51,35,0.12);
   }
 
-  .menu-topbar { background: white; padding: 0 clamp(16px, 3vw, 40px); height: 64px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(131,153,88,0.12); position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 4px rgba(10,51,35,0.06); width: 100%; box-sizing: border-box; }
+  .menu-topbar { background: white; padding: 0 clamp(16px, 3vw, 40px); height: 64px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(131,153,88,0.12); position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 4px rgba(10,51,35,0.06); box-sizing: border-box; flex-shrink: 0; }
   .menu-topbar-title { font-size: 17px; font-weight: 700; color: #0A3323; }
   .menu-topbar-right { display: flex; align-items: center; gap: 12px; }
   .seller-notif-btn { position: relative; display: flex; align-items: center; justify-content: center; background: rgba(131,153,88,0.12); color: #0A3323; border: none; border-radius: 12px; width: 42px; height: 42px; font-size: 18px; cursor: pointer; font-family: 'Poppins', sans-serif; transition: background 0.2s; }
@@ -399,6 +400,7 @@ const menuStyles = `
   /* ── Responsive breakpoints ── */
   @media (max-width: 1100px) {
     .seller-sidebar { width: 200px; }
+    .menu-main { margin-left: 200px; }
   }
   @media (max-width: 860px) {
     .seller-sidebar { width: 64px; overflow: hidden; }
@@ -413,10 +415,12 @@ const menuStyles = `
     .seller-sidebar .sb-nav-item { padding: 12px; justify-content: center; }
     .seller-sidebar .sb-user-card { padding: 10px; justify-content: center; }
     .seller-sidebar .sb-logout { padding: 10px; justify-content: center; width: calc(100% - 16px); }
+    .menu-main { margin-left: 64px; }
     .menu-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
   }
   @media (max-width: 600px) {
     .seller-sidebar { display: none; }
+    .menu-main { margin-left: 0; }
     .menu-grid { grid-template-columns: 1fr; }
     .form-row { grid-template-columns: 1fr; }
   }
@@ -652,7 +656,7 @@ export default function Menu({ onNavigate }) {
         <div className={`toast ${toast.type}`}>{toast.msg}</div>
       )}
 
-      <main className="menu-main" style={{ paddingTop: 0 }}>
+      <main className="menu-main">
         {/* Topbar dengan tombol notifikasi */}
         <div className="menu-topbar">
           <span className="menu-topbar-title">Kelola Menu 🍽️</span>
@@ -701,6 +705,7 @@ export default function Menu({ onNavigate }) {
           </div>
         </div>
 
+        <div className="menu-inner">
         <div className="menu-header" style={{ paddingTop: 32 }}>
           <div>
             <h1>Kelola Menu 🍽️</h1>
@@ -787,6 +792,7 @@ export default function Menu({ onNavigate }) {
             })}
           </div>
         )}
+        </div>{/* end menu-inner */}
       </main>
 
       {/* ── Modal Tambah / Edit ── */}
