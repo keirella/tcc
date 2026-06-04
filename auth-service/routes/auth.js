@@ -64,6 +64,23 @@ router.post('/login', async (req, res) => {
 
         const user = rows[0];
 
+        let stallId = null;
+
+            if (user.role === "seller") {
+                const [stallRows] = await db.query(
+                    'SELECT id FROM stalls WHERE seller_id = ?',
+                    [user.id]
+                    );
+
+                    const stallId = stallRows.length > 0
+                    ? stallRows[0].id
+                      : null;
+
+                if (stallRows.length > 0) {
+                    stallId = stallRows[0].id;
+                }
+            }
+
         // 3. TAMBAHKAN LOG INI UNTUK BANDINGKAN PASSWORD:
         console.log("Password asli dari Web:", password);
         console.log("Password Hash dari GCP:", user.password);
@@ -84,14 +101,16 @@ router.post('/login', async (req, res) => {
 
         res.json({
             message: "Login Berhasil",
-            token: token,
+            token,
             user: {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                stall_id: stallId
             }
-        });
+            });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message });
