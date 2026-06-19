@@ -78,12 +78,9 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
     setLoading(true);
 
     try {
-      // Buyer pakai email, Seller pakai kode unik sebagai identifier
       const identifier = role === "buyer" ? email : kodeUnik;
-      const data = await login(identifier, password);
+      const data = await login(identifier, password, role);
 
-      // data.user dari backend: { id, name, role }
-      // Tambahkan kode_unik untuk seller biar bisa ditampilkan di sidebar
       const userData = {
         ...data.user,
         ...(role === "seller" ? { kode_unik: kodeUnik } : {}),
@@ -222,7 +219,6 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
                 Belum punya akun?{" "}
                 <a
                   onClick={() => {
-                    console.log("REGISTER DIKLIK");
                     onGoToRegister();
                   }}
                 >

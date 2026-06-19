@@ -1,9 +1,5 @@
-// ── api.js ────────────────────────────────────────────────────────
-// Taruh di: src/services/api.js
-// ─────────────────────────────────────────────────────────────────
-
-const BASE_URL_AUTH = "https://auth-service-194342266835.us-central1.run.app/";
-const BASE_URL_API  = "https://api-service-194342266835.us-central1.run.app/";
+const BASE_URL_AUTH = "https://auth-service-new-194342266835.us-central1.run.app";
+const BASE_URL_API  = "https://api-service-new-194342266835.us-central1.run.app";
 
 function getToken() {
   return localStorage.getItem("token");
@@ -24,21 +20,19 @@ async function request(baseUrl, path, options = {}) {
   return data;
 }
 
-// ── AUTH ──────────────────────────────────────────────────────────
-
-export async function register(name, email, password) {
+export async function register(name, email, password, role = "buyer") {
   return request(BASE_URL_AUTH, "/auth/register", {
     method: "POST",
-    body: JSON.stringify({ name, email, password, role: "buyer" }),
+    body: JSON.stringify({ name, email, password, role }),
   });
 }
 
-export async function login(email, password) {
+export async function login(identifier, password, role) {
   const data = await request(BASE_URL_AUTH, "/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ identifier, password, role }),
   });
-  console.log("LOGIN RESPONSE:", data);
+  
   if (data.token) {
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
@@ -47,8 +41,6 @@ export async function login(email, password) {
 }
 
 export async function logout() {
-  // Hapus FCM token dari DB dulu supaya user ini tidak dapat notif orang lain
-  // (penting kalau 1 device dipakai banyak user)
   try {
     const token = getToken();
     if (token) {
@@ -57,11 +49,11 @@ export async function logout() {
         headers: { Authorization: `Bearer ${token}` },
       });
     }
-  } catch { /* tidak perlu crash kalau gagal */ }
+  } catch {}
 
   localStorage.removeItem("token");
   localStorage.removeItem("user");
-  localStorage.removeItem("notifs"); // hapus notif lokal juga
+  localStorage.removeItem("notifs");
 }
 
 export function getSavedUser() {
@@ -70,14 +62,11 @@ export function getSavedUser() {
     if (stored) return JSON.parse(stored);
     const token = getToken();
     if (!token) return null;
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload;
+    return JSON.parse(atob(token.split(".")[1]));
   } catch {
     return null;
   }
 }
-
-// ── STALLS ────────────────────────────────────────────────────────
 
 export async function getStalls() {
   return request(BASE_URL_API, "/api/stalls");
@@ -101,8 +90,6 @@ export async function deleteStall(stallId) {
 export async function getStallEarnings(stallId) {
   return request(BASE_URL_API, `/api/stalls/${stallId}/earnings`);
 }
-
-// ── MENUS ─────────────────────────────────────────────────────────
 
 export async function getMenus() {
   return request(BASE_URL_API, "/api/menus");
@@ -130,7 +117,6 @@ export async function deleteMenu(menuId) {
   return request(BASE_URL_API, `/api/menus/${menuId}`, { method: "DELETE" });
 }
 
-
 export async function reduceMenuStock(menuId, qty) {
   return request(BASE_URL_API, `/api/menus/${menuId}/stok`, {
     method: "PATCH",
@@ -142,19 +128,11 @@ export async function getEarnings(stallId) {
   return request(BASE_URL_API, `/api/menus/earnings/${stallId}`);
 }
 
-// ── ORDERS ────────────────────────────────────────────────────────
-
-// export async function getOrders() {
-//   return request(BASE_URL_API, "/api/orders");
-// }
-
-// Ganti getOrders yang lama
 export async function getOrders(stallId) {
   const query = stallId ? `?stall_id=${stallId}` : "";
   return request(BASE_URL_API, `/api/orders${query}`);
 }
 
-// Dipakai untuk lazy-load detail items saat kartu order dibuka
 export async function getOrderById(orderId) {
   return request(BASE_URL_API, `/api/orders/${orderId}`);
 }
@@ -184,8 +162,6 @@ export async function createOrder(cart, buyerId) {
   });
 }
 
-// ── PAYMENTS ──────────────────────────────────────────────────────
-
 export async function processPayment(orderId, jumlah) {
   return request(BASE_URL_API, "/api/payments/process", {
     method: "POST",
@@ -205,11 +181,6 @@ export async function deletePayment(paymentId) {
   return request(BASE_URL_API, `/api/payments/${paymentId}`, { method: "DELETE" });
 }
 
-// ── CHECKOUT HELPER ───────────────────────────────────────────────
-// Step 1: createOrder → status 'pending'
-// Step 2: processPayment → status 'paid'
-// Kalau step 2 gagal, order tetap ada dengan status 'pending'
-// User bisa lihat di Status Pesanan dan admin bisa konfirmasi manual
 export async function checkoutCart(cart, buyerId) {
   const orderRes = await createOrder(cart, buyerId);
   const orderId = orderRes.orderId;
@@ -222,9 +193,6 @@ export async function checkoutCart(cart, buyerId) {
     err.orderId = orderId;
     throw err;
   }
-
-  // Stok dikurangi otomatis oleh BE di payments.js saat proses payment
-  // Tidak perlu reduceMenuStock di sini supaya tidak dobel
 
   return { orderId, total };
 }
